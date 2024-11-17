@@ -24,6 +24,7 @@ build-backend="setuptools.build_meta"
 
 [project.urls]
 Homepage = "https://github.com/aig/pysparkformat"
+Issues = "https://github.com/aig/pysparkformat/issues"
 
 [tool.setuptools.dynamic]
 version = {attr="pysparkformat.__version__"}
