@@ -1,0 +1,30 @@
+[project]
+name = "pysparkformat"
+dynamic = ["version"]
+authors =  [
+    { name="Ilya Aniskovets", email="ilya@aniskovets.com" },
+]
+description="Collection of Apache Spark Custom Data Formats"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text="Apache-2.0"}
+
+dependencies = [
+    "requests",
+    "pyarrow",
+    "pyspark",
+    "pandas",
+    "grpcio",
+    "grpcio-status"
+]
+
+[build-system]
+requires=["setuptools"]
+build-backend="setuptools.build_meta"
+
+[project.urls]
+Homepage = "https://github.com/aig/pysparkformat"
+
+[tool.setuptools.dynamic]
+version = {attr="pysparkformat.__version__"}
+
