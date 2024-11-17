@@ -16,7 +16,8 @@ pip install pyspark==4.0.0.dev2
 pip install pysparkformat
 ```
 
-You also can use this package in Databricks notebooks, just install it using the following command:
+You also can use this package in Databricks notebooks. Tested with Databricks Runtime 15.4 LTS.
+Just install it using the following command to general-purpose cluster:
 ```bash
 %pip install pysparkformat
 ```
@@ -25,10 +26,15 @@ You also can use this package in Databricks notebooks, just install it using the
 from pyspark.sql import SparkSession
 from pysparkformat.http.csv import HTTPCSVDataSource
 
+# you can comment the following line if you are running this code in Databricks
 spark = SparkSession.builder.appName("custom-datasource-example").getOrCreate()
+
+# uncomment to disable format check for Databricks Runtime
+# spark.conf.set("spark.databricks.delta.formatCheck.enabled", False)
+
 spark.dataSource.register(HTTPCSVDataSource)
 
 url = "https://www.stats.govt.nz/assets/Uploads/Annual-enterprise-survey/Annual-enterprise-survey-2023-financial-year-provisional/Download-data/annual-enterprise-survey-2023-financial-year-provisional.csv"
-df = spark.read.format("http-csv").option("url", url).load()
-df.show()
+df = spark.read.format("http-csv").option("header", True).load(url)
+df.show() # or use display(df) in Databricks
 ```
