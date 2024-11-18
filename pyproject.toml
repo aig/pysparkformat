@@ -28,3 +28,7 @@ Issues = "https://github.com/aig/pysparkformat/issues"
 [tool.setuptools.dynamic]
 version = {attr="pysparkformat.__version__"}
 
+[tool.pytest.ini_options]
+pythonpath = [
+    ".", "src"
+]
