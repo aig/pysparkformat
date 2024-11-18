@@ -1,19 +1,75 @@
 import csv
 import math
+import requests
 
 from pyspark.sql.datasource import DataSource, DataSourceReader, InputPartition
 from pyspark.sql.types import StructType, StructField, StringType
 from requests.structures import CaseInsensitiveDict
 
 
-class HTTPHeader:
+DEFAULT_REQUEST_HEADERS = {"Accept-Encoding": "none"}
+
+class HTTPResponseHeader:
     def __init__(self, headers: CaseInsensitiveDict):
-        self._headers = headers
+        self.headers = headers
 
     @property
     def content_length(self):
-        return int(self._headers.get("Content-Length", 0))
+        return int(self.headers.get("Content-Length", 0))
 
+class HTTPFile:
+    def __init__(self, url: str):
+        self.url = url
+
+        response = requests.head(self.url, headers=DEFAULT_REQUEST_HEADERS)
+        if response.status_code != 200:
+            raise ValueError("path is not accessible")
+
+        self.header = HTTPResponseHeader(response.headers)
+
+        if self.header.content_length == 0:
+            raise ValueError("Content-Length is not available")
+
+        del response
+
+    @property
+    def content_length(self):
+        return self.header.content_length
+
+class HTTPFileReader:
+    def __init__(self, file: HTTPFile):
+        self.file = file
+
+    def read_line(self, max_line_size: int) -> bytes:
+        http_range_start = 0
+
+        chunks = []
+        while True:
+            http_range_end = min(
+                http_range_start + max_line_size, self.file.content_length - 1
+            )
+
+            headers = {
+                "Range": f"bytes={http_range_start}-{http_range_end}",
+                **DEFAULT_REQUEST_HEADERS,
+            }
+
+            response = requests.get(self.file.url, headers=headers)
+            if response.status_code != 206:
+                raise ValueError("HTTP range request failed")
+
+            chunk = response.content
+            chunks.append(chunk)
+
+            if chunk.find(10) != -1:
+                break
+
+            http_range_start = http_range_end + 1
+
+            if http_range_start == self.file.content_length:
+                break
+
+        return b"".join(chunks)
 
 class Parameters:
     DEFAULT_PARTITION_SIZE = 1024 * 1024
@@ -37,51 +93,15 @@ class Parameters:
 
 class HTTPCSVDataSource(DataSource):
     def __init__(self, options: dict):
-        import requests
-
         super().__init__(options)
 
         params = Parameters(options)
 
-        request_headers = {"Accept-Encoding": "none"}
-        response = requests.head(params.path, headers=request_headers)
-        if response.status_code != 200:
-            raise ValueError("path is not accessible")
+        self.file = HTTPFile(params.path)
+        file_reader = HTTPFileReader(self.file)
+        data = file_reader.read_line(params.max_line_size)
 
-        self.header = HTTPHeader(response.headers)
-
-        if self.header.content_length == 0:
-            raise ValueError("Content-Length is not available")
-
-        http_range_start = 0
-
-        chunks = []
-        while True:
-            http_range_end = min(
-                http_range_start + params.max_line_size, self.header.content_length - 1
-            )
-
-            headers = {
-                "Range": f"bytes={http_range_start}-{http_range_end}",
-                **request_headers,
-            }
-
-            response = requests.get(params.path, headers=headers)
-            if response.status_code != 206:
-                raise ValueError("HTTP range request failed")
-
-            chunk = response.content
-            chunks.append(chunk)
-
-            if chunk.find(10) != -1:
-                break
-
-            http_range_start = http_range_end + 1
-
-            if http_range_start == self.header.content_length:
-                break
-
-        reader = csv.reader(b"".join(chunks).decode("utf-8").splitlines())
+        reader = csv.reader(data.decode("utf-8").splitlines())
         row = next(reader)
 
         if params.header:
@@ -99,50 +119,63 @@ class HTTPCSVDataSource(DataSource):
         )
 
     def reader(self, schema: StructType):
-        return CSVDataSourceReader(schema, self.options, self.header)
+        return CSVDataSourceReader(schema, self.options, self.file)
 
 
-class CSVDataSourceReader(DataSourceReader):
-    def __init__(self, schema: StructType, options: dict, header: HTTPHeader):
-        self.schema = schema
-        self.options = options
-        self.header = header
-        self.params = Parameters(options)
+class HTTPFilePartitionReader:
+    def __init__(self, file: HTTPFile, partition_size: int, max_line_size: int):
+        self.file = file
+        self.partition_size = partition_size
+        self.max_line_size = max_line_size
 
-    def partitions(self):
-        n = math.ceil(self.header.content_length / self.params.partition_size)
-        return [InputPartition(i + 1) for i in range(n)]
-
-    def read(self, partition):
+    def read_partition(self, partition: InputPartition) -> bytes:
         import requests
 
-        block_start = (partition.value - 1) * self.params.partition_size
-        block_size = partition.value * self.params.partition_size
+        block_start = (partition.value - 1) * self.partition_size
+        block_size = partition.value * self.partition_size
 
         http_range_start = block_start
         http_range_end = min(
-            (block_size - 1) + self.params.max_line_size, self.header.content_length - 1
+            (block_size - 1) + self.max_line_size, self.file.content_length - 1
         )
 
-        if http_range_end > self.header.content_length:
-            http_range_end = self.header.content_length - 1
+        if http_range_end > self.file.content_length:
+            http_range_end = self.file.content_length - 1
 
         headers = {
             "Range": f"bytes={http_range_start}-{http_range_end}",
-            "Accept-Encoding": "none",
+            **DEFAULT_REQUEST_HEADERS,
         }
 
-        response = requests.get(self.params.path, headers=headers)
+        response = requests.get(self.file.url, headers=headers)
         if response.status_code != 206:
             raise ValueError("HTTP range request failed")
 
         content = response.content
-        index = content.find(10, self.params.partition_size)
+        index = content.find(10, self.partition_size)
         if index != -1:
-            content = content[:index]
-        else:
-            if http_range_end != self.header.content_length - 1:
-                raise ValueError("Line is too long. Increase maxLineSize")
+            return content[:index]
+
+        if http_range_end != self.file.content_length - 1:
+            raise ValueError("Line is too long. Increase maxLineSize")
+
+        return content
+
+class CSVDataSourceReader(DataSourceReader):
+    def __init__(self, schema: StructType, options: dict, file: HTTPFile):
+        self.schema = schema
+        self.options = options
+        self.file = file
+        self.params = Parameters(options)
+
+    def partitions(self):
+        n = math.ceil(self.file.content_length / self.params.partition_size)
+        return [InputPartition(i + 1) for i in range(n)]
+
+    def read(self, partition):
+        file_reader = HTTPFilePartitionReader(self.file, self.params.partition_size, self.params.max_line_size)
+
+        content = file_reader.read_partition(partition)
 
         # if not first partition, skip first line, we read it in previous partition
         if partition.value != 1:
