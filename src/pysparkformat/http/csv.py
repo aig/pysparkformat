@@ -43,7 +43,8 @@ class HTTPCSVDataSource(DataSource):
 
         params = Parameters(options)
 
-        response = requests.head(params.path)
+        request_headers = {"Accept-Encoding": "none"}
+        response = requests.head(params.path, headers=request_headers)
         if response.status_code != 200:
             raise ValueError("path is not accessible")
 
@@ -60,7 +61,10 @@ class HTTPCSVDataSource(DataSource):
                 http_range_start + params.max_line_size, self.header.content_length - 1
             )
 
-            headers = {"Range": f"bytes={http_range_start}-{http_range_end}"}
+            headers = {
+                "Range": f"bytes={http_range_start}-{http_range_end}",
+                **request_headers,
+            }
 
             response = requests.get(params.path, headers=headers)
             if response.status_code != 206:
@@ -123,7 +127,10 @@ class CSVDataSourceReader(DataSourceReader):
         if http_range_end > self.header.content_length:
             http_range_end = self.header.content_length - 1
 
-        headers = {"Range": f"bytes={http_range_start}-{http_range_end}"}
+        headers = {
+            "Range": f"bytes={http_range_start}-{http_range_end}",
+            "Accept-Encoding": "none",
+        }
 
         response = requests.get(self.params.path, headers=headers)
         if response.status_code != 206:
