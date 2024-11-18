@@ -36,8 +36,7 @@ class TestHttpCsv(unittest.TestCase):
             .localCheckpoint()
         )
 
-        print(result.count())
-        result.show(truncate=False)
+        assert result.count() == 50985
 
 
 if __name__ == "__main__":
