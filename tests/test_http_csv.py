@@ -22,10 +22,8 @@ class TestHttpCsv(unittest.TestCase):
         spark.dataSource.register(HTTPCSVDataSource)
 
         url = (
-            "https://www.stats.govt.nz/assets/Uploads/"
-            + "Annual-enterprise-survey/Annual-enterprise-survey-2023-financial-year-provisional"
-            + "/Download-data/"
-            + "annual-enterprise-survey-2023-financial-year-provisional.csv"
+            "https://raw.githubusercontent.com/aig/pysparkformat/"
+            + "refs/heads/master/tests/data/valid-csv-with-header.csv"
         )
 
         result = (
