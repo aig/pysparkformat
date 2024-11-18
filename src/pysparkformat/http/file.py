@@ -6,7 +6,7 @@ from requests.structures import CaseInsensitiveDict
 DEFAULT_REQUEST_HEADERS = {"Accept-Encoding": "none"}
 
 
-class HTTPResponseHeader:
+class ResponseHeader:
     def __init__(self, headers: CaseInsensitiveDict):
         self.headers = headers
 
@@ -23,7 +23,7 @@ class HTTPFile:
         if response.status_code != 200:
             raise ValueError("path is not accessible")
 
-        self.header = HTTPResponseHeader(response.headers)
+        self.header = ResponseHeader(response.headers)
 
         if self.header.content_length == 0:
             raise ValueError("Content-Length is not available")
@@ -35,7 +35,7 @@ class HTTPFile:
         return self.header.content_length
 
 
-class HTTPFileReader:
+class HTTPTextReader:
     def __init__(self, file: HTTPFile):
         self.file = file
 
@@ -71,17 +71,25 @@ class HTTPFileReader:
         return b"".join(chunks)
 
 
-class HTTPFilePartitionReader:
+class HTTPTextPartitionReader:
     def __init__(self, file: HTTPFile, partition_size: int, max_line_size: int):
         self.file = file
         self.partition_size = partition_size
         self.max_line_size = max_line_size
 
-    def read_partition(self, partition: InputPartition) -> bytes:
+    def read_partition(self, partition_number: int) -> bytes:
+        """
+        Read partition from HTTP file
+        :param partition_number: partition number starting from 1
+        :return: returns partition content
+        """
         import requests
 
-        block_start = (partition.value - 1) * self.partition_size
-        block_size = partition.value * self.partition_size
+        if partition_number < 1:
+            raise ValueError("Partition number should be greater than 0")
+
+        block_start = (partition_number - 1) * self.partition_size
+        block_size = partition_number * self.partition_size
 
         http_range_start = block_start
         http_range_end = min(

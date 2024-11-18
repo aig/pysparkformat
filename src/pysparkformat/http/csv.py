@@ -4,7 +4,7 @@ import math
 from pyspark.sql.datasource import DataSource, DataSourceReader, InputPartition
 from pyspark.sql.types import StructType, StructField, StringType
 
-from pysparkformat.http.file import HTTPFile, HTTPFileReader, HTTPFilePartitionReader
+from pysparkformat.http.file import HTTPFile, HTTPTextReader, HTTPTextPartitionReader
 
 
 class Parameters:
@@ -32,13 +32,13 @@ class HTTPCSVDataSource(DataSource):
         super().__init__(options)
 
         params = Parameters(options)
-
         self.file = HTTPFile(params.path)
-        file_reader = HTTPFileReader(self.file)
+
+        file_reader = HTTPTextReader(self.file)
         data = file_reader.read_line(params.max_line_size)
 
-        reader = csv.reader(data.decode("utf-8").splitlines())
-        row = next(reader)
+        csv_reader = csv.reader(data.decode("utf-8").splitlines())
+        row = next(csv_reader)
 
         if params.header:
             self.columns = row
@@ -70,11 +70,11 @@ class CSVDataSourceReader(DataSourceReader):
         return [InputPartition(i + 1) for i in range(n)]
 
     def read(self, partition):
-        file_reader = HTTPFilePartitionReader(
+        file_reader = HTTPTextPartitionReader(
             self.file, self.params.partition_size, self.params.max_line_size
         )
 
-        content = file_reader.read_partition(partition)
+        content = file_reader.read_partition(partition.value)
 
         # if not first partition, skip first line, we read it in previous partition
         if partition.value != 1:
@@ -82,10 +82,10 @@ class CSVDataSourceReader(DataSourceReader):
             if index != -1:
                 content = content[index + 1 :]
 
-        reader = csv.reader(content.decode("utf-8").splitlines())
+        csv_reader = csv.reader(content.decode("utf-8").splitlines())
 
         if partition.value == 1 and self.params.header:
-            next(reader)
+            next(csv_reader)
 
-        for row in reader:
+        for row in csv_reader:
             yield tuple(row)
