@@ -9,6 +9,7 @@ from requests.structures import CaseInsensitiveDict
 
 DEFAULT_REQUEST_HEADERS = {"Accept-Encoding": "none"}
 
+
 class HTTPResponseHeader:
     def __init__(self, headers: CaseInsensitiveDict):
         self.headers = headers
@@ -16,6 +17,7 @@ class HTTPResponseHeader:
     @property
     def content_length(self):
         return int(self.headers.get("Content-Length", 0))
+
 
 class HTTPFile:
     def __init__(self, url: str):
@@ -35,6 +37,7 @@ class HTTPFile:
     @property
     def content_length(self):
         return self.header.content_length
+
 
 class HTTPFileReader:
     def __init__(self, file: HTTPFile):
@@ -70,6 +73,7 @@ class HTTPFileReader:
                 break
 
         return b"".join(chunks)
+
 
 class Parameters:
     DEFAULT_PARTITION_SIZE = 1024 * 1024
@@ -161,6 +165,7 @@ class HTTPFilePartitionReader:
 
         return content
 
+
 class CSVDataSourceReader(DataSourceReader):
     def __init__(self, schema: StructType, options: dict, file: HTTPFile):
         self.schema = schema
@@ -173,7 +178,9 @@ class CSVDataSourceReader(DataSourceReader):
         return [InputPartition(i + 1) for i in range(n)]
 
     def read(self, partition):
-        file_reader = HTTPFilePartitionReader(self.file, self.params.partition_size, self.params.max_line_size)
+        file_reader = HTTPFilePartitionReader(
+            self.file, self.params.partition_size, self.params.max_line_size
+        )
 
         content = file_reader.read_partition(partition)
 
