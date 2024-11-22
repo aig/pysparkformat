@@ -1,7 +1,6 @@
 import requests
 from requests.structures import CaseInsensitiveDict
 
-
 DEFAULT_REQUEST_HEADERS = {"Accept-Encoding": "none"}
 
 
@@ -38,7 +37,7 @@ class HTTPTextReader:
     def __init__(self, file: HTTPFile):
         self.file = file
 
-    def read_line(self, max_line_size: int) -> bytes:
+    def read_first_line(self, max_line_size: int) -> bytes:
         http_range_start = 0
 
         chunks = []

@@ -2,9 +2,9 @@ import csv
 import math
 
 from pyspark.sql.datasource import DataSource, DataSourceReader, InputPartition
-from pyspark.sql.types import StructType, StructField, StringType
+from pyspark.sql.types import StringType, StructField, StructType
 
-from pysparkformat.http.file import HTTPFile, HTTPTextReader, HTTPTextPartitionReader
+from pysparkformat.http.file import HTTPFile, HTTPTextPartitionReader, HTTPTextReader
 
 
 class Parameters:
@@ -43,7 +43,7 @@ class HTTPCSVDataSource(DataSource):
         self.file = HTTPFile(params.path)
 
         file_reader = HTTPTextReader(self.file)
-        data = file_reader.read_line(params.max_line_size)
+        data = file_reader.read_first_line(params.max_line_size)
 
         csv_reader = csv.reader(
             data.decode(params.encoding).splitlines(),
