@@ -36,42 +36,26 @@ class TestHttpCsv(unittest.TestCase):
         cls.spark.stop()
 
     def test_csv_valid_with_header(self):
-        remote_result = (
-            self.spark.read.format("http-csv")
-            .option("header", True)
-            .load(self.TEST_DATA_URL + self.VALID_WITH_HEADER)
-        )
-
-        local_result = self.spark.read.option("header", True).csv(
-            str(self.data_path / self.VALID_WITH_HEADER)
-        )
-        self.assertEqual(remote_result.exceptAll(local_result).count(), 0)
-        self.assertEqual(local_result.exceptAll(remote_result).count(), 0)
+        options = {"header": "true"}
+        self._check_csv(self.VALID_WITH_HEADER, options)
 
     def test_csv_valid_without_header(self):
-        remote_result = (
-            self.spark.read.format("http-csv")
-            .option("header", False)
-            .load(self.TEST_DATA_URL + self.VALID_WITHOUT_HEADER)
-            .localCheckpoint()
-        )
-
-        local_result = self.spark.read.option("header", False).csv(
-            str(self.data_path / self.VALID_WITHOUT_HEADER)
-        )
-        self.assertEqual(remote_result.exceptAll(local_result).count(), 0)
-        self.assertEqual(local_result.exceptAll(remote_result).count(), 0)
+        options = {"header": "false"}
+        self._check_csv(self.VALID_WITHOUT_HEADER, options)
 
     def test_csv_valid_with_header_no_data(self):
+        options = {"header": "true"}
+        self._check_csv(self.VALID_WITH_HEADER_NO_DATA, options)
+
+    def _check_csv(self, name, options):
         remote_result = (
             self.spark.read.format("http-csv")
-            .option("header", True)
-            .load(self.TEST_DATA_URL + self.VALID_WITH_HEADER_NO_DATA)
+            .options(**options)
+            .load(self.TEST_DATA_URL + name)
             .localCheckpoint()
         )
-
-        local_result = self.spark.read.option("header", True).csv(
-            str(self.data_path / self.VALID_WITH_HEADER_NO_DATA)
+        local_result = self.spark.read.options(**options).csv(
+            str(self.data_path / name)
         )
         self.assertEqual(remote_result.exceptAll(local_result).count(), 0)
         self.assertEqual(local_result.exceptAll(remote_result).count(), 0)
