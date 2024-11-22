@@ -9,13 +9,18 @@ from pysparkformat.http.csv import HTTPCSVDataSource
 
 
 class TestHttpCsv(unittest.TestCase):
-    VALID_CSV_WITH_HEADER = (
+    TEST_DATA_URL = (
         "https://raw.githubusercontent.com/aig/pysparkformat/"
-        + "refs/heads/master/tests/data/valid-with-header.csv"
+        + "refs/heads/master/tests/data/"
     )
-    VALID_CSV_WITHOUT_HEADER = (
-        "https://raw.githubusercontent.com/aig/pysparkformat/"
-        + "refs/heads/master/tests/data/valid-without-header.csv"
+    VALID_WITH_HEADER = (
+        TEST_DATA_URL + "valid-with-header.csv"
+    )
+    VALID_WITHOUT_HEADER = (
+        TEST_DATA_URL + "valid-without-header.csv"
+    )
+    VALID_WITH_HEADER_NO_DATA = (
+        TEST_DATA_URL + "valid-with-header-no-data.csv"
     )
 
     @classmethod
@@ -34,25 +39,35 @@ class TestHttpCsv(unittest.TestCase):
     def tearDownClass(cls):
         cls.spark.stop()
 
-    def test_valid_csv_with_header(self):
+    def test_csv_valid_with_header(self):
         result = (
             self.spark.read.format("http-csv")
             .option("header", True)
-            .load(self.VALID_CSV_WITH_HEADER)
+            .load(self.VALID_WITH_HEADER)
             .localCheckpoint()
         )
 
         self.assertEqual(result.count(), 50985)
 
-    def test_valid_csv_without_header(self):
+    def test_csv_valid_without_header(self):
         result = (
             self.spark.read.format("http-csv")
             .option("header", False)
-            .load(self.VALID_CSV_WITHOUT_HEADER)
+            .load(self.VALID_WITHOUT_HEADER)
             .localCheckpoint()
         )
 
         self.assertEqual(result.count(), 50985)
+
+    def test_csv_valid_with_header_no_data(self):
+        result = (
+            self.spark.read.format("http-csv")
+            .option("header", True)
+            .load(self.VALID_WITH_HEADER_NO_DATA)
+            .localCheckpoint()
+        )
+
+        self.assertEqual(result.count(), 0)
 
 if __name__ == "__main__":
     unittest.main()
