@@ -8,7 +8,7 @@ from pyspark.sql import SparkSession
 from pysparkformat.http.csv import HTTPCSVDataSource
 
 
-class TestHttpCsv(unittest.TestCase):
+class TestHTTPCSV(unittest.TestCase):
     TEST_DATA_URL = (
         "https://raw.githubusercontent.com/aig/pysparkformat/"
         + "refs/heads/master/tests/data/"
@@ -47,7 +47,7 @@ class TestHttpCsv(unittest.TestCase):
         options = {"header": "true"}
         self._check_csv(self.VALID_WITH_HEADER_NO_DATA, options)
 
-    def _check_csv(self, name, options):
+    def _check_csv(self, name: str, options: dict):
         remote_result = (
             self.spark.read.format("http-csv")
             .options(**options)
