@@ -9,14 +9,13 @@ from pysparkformat.http.csv import HTTPCSVDataSource
 
 
 class TestHttpCsv(unittest.TestCase):
-    VALID_CSV_WITH_HEADER = (
+    TEST_DATA_URL = (
         "https://raw.githubusercontent.com/aig/pysparkformat/"
-        + "refs/heads/master/tests/data/valid-csv-with-header.csv"
+        + "refs/heads/master/tests/data/"
     )
-    VALID_CSV_WITHOUT_HEADER = (
-        "https://raw.githubusercontent.com/aig/pysparkformat/"
-        + "refs/heads/master/tests/data/valid-without-header.csv"
-    )
+    VALID_WITH_HEADER = "valid-with-header.csv"
+    VALID_WITHOUT_HEADER = "valid-without-header.csv"
+    VALID_WITH_HEADER_NO_DATA = "valid-with-header-no-data.csv"
 
     @classmethod
     def setUpClass(cls):
@@ -30,19 +29,37 @@ class TestHttpCsv(unittest.TestCase):
         cls.spark = SparkSession.builder.appName("http-csv-test-app").getOrCreate()
         cls.spark.dataSource.register(HTTPCSVDataSource)
 
+        cls.data_path = Path(__file__).resolve().parent / "data"
+
     @classmethod
     def tearDownClass(cls):
         cls.spark.stop()
 
-    def test_valid_csv_with_header(self):
-        result = (
+    def test_csv_valid_with_header(self):
+        options = {"header": "true"}
+        self._check_csv(self.VALID_WITH_HEADER, options)
+
+    def test_csv_valid_without_header(self):
+        options = {"header": "false"}
+        self._check_csv(self.VALID_WITHOUT_HEADER, options)
+
+    def test_csv_valid_with_header_no_data(self):
+        options = {"header": "true"}
+        self._check_csv(self.VALID_WITH_HEADER_NO_DATA, options)
+
+    def _check_csv(self, name, options):
+        remote_result = (
             self.spark.read.format("http-csv")
-            .option("header", True)
-            .load(self.VALID_CSV_WITH_HEADER)
+            .options(**options)
+            .load(self.TEST_DATA_URL + name)
             .localCheckpoint()
         )
-
-        self.assertEqual(result.count(), 50985)
+        local_result = self.spark.read.options(**options).csv(
+            str(self.data_path / name)
+        )
+        self.assertEqual(remote_result.schema, local_result.schema)
+        self.assertEqual(remote_result.exceptAll(local_result).count(), 0)
+        self.assertEqual(local_result.exceptAll(remote_result).count(), 0)
 
 
 if __name__ == "__main__":

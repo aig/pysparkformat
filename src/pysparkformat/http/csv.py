@@ -25,6 +25,10 @@ class Parameters:
         self.partition_size = max(
             int(options.get("partitionSize", self.DEFAULT_PARTITION_SIZE)), 1
         )
+
+        if self.partition_size < self.max_line_size:
+            raise ValueError("partitionSize must be greater than maxLineSize")
+
         self.quote = str(options.get("quote", '"'))
         self.sep = str(options.get("sep", ","))
         self.encoding = str(options.get("encoding", "utf-8"))
@@ -52,7 +56,7 @@ class HTTPCSVDataSource(DataSource):
         if params.header:
             self.columns = row
         else:
-            self.columns = [f"c{i}" for i in range(len(row))]
+            self.columns = [f"_c{i}" for i in range(len(row))]
 
     @classmethod
     def name(cls):
