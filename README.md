@@ -5,8 +5,14 @@ This is a great feature that allows us to create custom data sources that can be
 
 This project is intended to collect all custom pyspark formats that I have created for my projects.
 
-Here is what we have so far:
- * http-csv : A custom data source that reads CSV files from HTTP.
+## http-csv format
+| Name     | Description                          | Default |
+|----------|--------------------------------------|:-------:|
+| header   | Whether the file has a header or not |  false  |
+| sep      | The delimiter used in the file       |    ,    |
+| encoding | The encoding of the file             |  UTF-8  |
+| quote    | The quote character                  |    "    |
+| escape   | The escape character                 |    \    |
 
 You are welcome to contribute with new formats or improvements in the existing ones.
 
