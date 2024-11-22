@@ -25,6 +25,10 @@ class Parameters:
         self.partition_size = max(
             int(options.get("partitionSize", self.DEFAULT_PARTITION_SIZE)), 1
         )
+        self.quote = str(options.get("quote", '"'))
+        self.sep = str(options.get("sep", ","))
+        self.encoding = str(options.get("encoding", "utf-8"))
+        self.escape = str(options.get("escape", "\\"))
 
 
 class HTTPCSVDataSource(DataSource):
@@ -37,7 +41,12 @@ class HTTPCSVDataSource(DataSource):
         file_reader = HTTPTextReader(self.file)
         data = file_reader.read_line(params.max_line_size)
 
-        csv_reader = csv.reader(data.decode("utf-8").splitlines())
+        csv_reader = csv.reader(
+            data.decode(params.encoding).splitlines(),
+            delimiter=params.sep,
+            quotechar=params.quote,
+            escapechar=params.escape,
+        )
         row = next(csv_reader)
 
         if params.header:
@@ -82,7 +91,12 @@ class CSVDataSourceReader(DataSourceReader):
             if index != -1:
                 content = content[index + 1 :]
 
-        csv_reader = csv.reader(content.decode("utf-8").splitlines())
+        csv_reader = csv.reader(
+            content.decode(self.params.encoding).splitlines(),
+            delimiter=self.params.sep,
+            quotechar=self.params.quote,
+            escapechar=self.params.escape,
+        )
 
         if partition.value == 1 and self.params.header:
             next(csv_reader)
