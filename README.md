@@ -16,7 +16,8 @@ This project is intended to collect all custom pyspark formats that I have creat
 
 You are welcome to contribute with new formats or improvements in the existing ones.
 
-Usage:
+## Usage
+
 ```bash
 pip install pyspark==4.0.0.dev2
 pip install pysparkformat
