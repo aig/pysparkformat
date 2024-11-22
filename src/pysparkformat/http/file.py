@@ -1,5 +1,4 @@
 import requests
-from pyspark.sql.datasource import InputPartition
 from requests.structures import CaseInsensitiveDict
 
 
