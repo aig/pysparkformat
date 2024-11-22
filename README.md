@@ -31,7 +31,7 @@ The following options can be specified when using the `http-csv` format:
 This requires PySpark 4.0 or later to be installed:
 
 ```bash
-pip install pyspark>=4.0.0dev2
+pip install pyspark==4.0.0.dev2
 ```
 
 Install the package using pip:
