@@ -56,7 +56,7 @@ class HTTPCSVDataSource(DataSource):
         if params.header:
             self.columns = row
         else:
-            self.columns = [f"c{i}" for i in range(len(row))]
+            self.columns = [f"_c{i}" for i in range(len(row))]
 
     @classmethod
     def name(cls):

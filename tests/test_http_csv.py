@@ -13,15 +13,9 @@ class TestHttpCsv(unittest.TestCase):
         "https://raw.githubusercontent.com/aig/pysparkformat/"
         + "refs/heads/master/tests/data/"
     )
-    VALID_WITH_HEADER = (
-        TEST_DATA_URL + "valid-with-header.csv"
-    )
-    VALID_WITHOUT_HEADER = (
-        TEST_DATA_URL + "valid-without-header.csv"
-    )
-    VALID_WITH_HEADER_NO_DATA = (
-        TEST_DATA_URL + "valid-with-header-no-data.csv"
-    )
+    VALID_WITH_HEADER = TEST_DATA_URL + "valid-with-header.csv"
+    VALID_WITHOUT_HEADER = TEST_DATA_URL + "valid-without-header.csv"
+    VALID_WITH_HEADER_NO_DATA = TEST_DATA_URL + "valid-with-header-no-data.csv"
 
     @classmethod
     def setUpClass(cls):
@@ -35,39 +29,53 @@ class TestHttpCsv(unittest.TestCase):
         cls.spark = SparkSession.builder.appName("http-csv-test-app").getOrCreate()
         cls.spark.dataSource.register(HTTPCSVDataSource)
 
+        cls.data_path = Path(__file__).resolve().parent / "data"
+
     @classmethod
     def tearDownClass(cls):
         cls.spark.stop()
 
     def test_csv_valid_with_header(self):
-        result = (
+        remote_result = (
             self.spark.read.format("http-csv")
             .option("header", True)
             .load(self.VALID_WITH_HEADER)
-            .localCheckpoint()
         )
 
-        self.assertEqual(result.count(), 50985)
+        local_result = self.spark.read.option("header", True).csv(
+            str(self.data_path / "valid-with-header.csv")
+        )
+        self.assertEqual(remote_result.exceptAll(local_result).count(), 0)
+        self.assertEqual(local_result.exceptAll(remote_result).count(), 0)
 
     def test_csv_valid_without_header(self):
-        result = (
+        remote_result = (
             self.spark.read.format("http-csv")
             .option("header", False)
             .load(self.VALID_WITHOUT_HEADER)
             .localCheckpoint()
         )
 
-        self.assertEqual(result.count(), 50985)
+        local_result = self.spark.read.option("header", False).csv(
+            str(self.data_path / "valid-without-header.csv")
+        )
+        self.assertEqual(remote_result.exceptAll(local_result).count(), 0)
+        self.assertEqual(local_result.exceptAll(remote_result).count(), 0)
 
     def test_csv_valid_with_header_no_data(self):
-        result = (
+        remote_result = (
             self.spark.read.format("http-csv")
             .option("header", True)
             .load(self.VALID_WITH_HEADER_NO_DATA)
             .localCheckpoint()
         )
 
-        self.assertEqual(result.count(), 0)
+        local_result = self.spark.read.option("header", True).csv(
+            str(self.data_path / "valid-with-header-no-data.csv")
+        )
+        self.assertEqual(remote_result.exceptAll(local_result).count(), 0)
+        self.assertEqual(local_result.exceptAll(remote_result).count(), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
