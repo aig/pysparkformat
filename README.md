@@ -1,4 +1,4 @@
-# pysparkformat: Custom PySpark Data Source Formats
+# pysparkformat: PySpark Data Source Formats
 
 This project provides a collection of custom data source formats for Apache Spark 4.0+ and Databricks, 
 leveraging the new V2 data source PySpark API.  
