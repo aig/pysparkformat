@@ -11,7 +11,7 @@ from pysparkformat.http.csv import HTTPCSVDataSource
 class TestHttpCsv(unittest.TestCase):
     VALID_CSV_WITH_HEADER = (
         "https://raw.githubusercontent.com/aig/pysparkformat/"
-        + "refs/heads/master/tests/data/valid-csv-with-header.csv"
+        + "refs/heads/master/tests/data/valid-with-header.csv"
     )
     VALID_CSV_WITHOUT_HEADER = (
         "https://raw.githubusercontent.com/aig/pysparkformat/"
@@ -44,6 +44,15 @@ class TestHttpCsv(unittest.TestCase):
 
         self.assertEqual(result.count(), 50985)
 
+    def test_valid_csv_without_header(self):
+        result = (
+            self.spark.read.format("http-csv")
+            .option("header", False)
+            .load(self.VALID_CSV_WITHOUT_HEADER)
+            .localCheckpoint()
+        )
+
+        self.assertEqual(result.count(), 50985)
 
 if __name__ == "__main__":
     unittest.main()
