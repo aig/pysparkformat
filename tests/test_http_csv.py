@@ -57,6 +57,7 @@ class TestHttpCsv(unittest.TestCase):
         local_result = self.spark.read.options(**options).csv(
             str(self.data_path / name)
         )
+        self.assertEqual(remote_result.schema, local_result.schema)
         self.assertEqual(remote_result.exceptAll(local_result).count(), 0)
         self.assertEqual(local_result.exceptAll(remote_result).count(), 0)
 
