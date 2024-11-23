@@ -23,7 +23,7 @@ class TestHTTP(unittest.TestCase):
         os.environ["PYSPARK_PYTHON"] = sys.executable
 
         if sys.platform == "win32":
-            hadoop_home = Path(__file__).parent.parent / "tools" / "windows" / "hadoop"
+            hadoop_home = Path(__file__).parent.parent / "tools" / "win32" / "hadoop"
             os.environ["HADOOP_HOME"] = str(hadoop_home)
             os.environ["PATH"] += ";" + str(hadoop_home / "bin")
 
