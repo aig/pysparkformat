@@ -82,8 +82,7 @@ class HTTPTextPartitionReader:
         self.max_line_size = max_line_size
 
     def read_partition(self, partition_number: int) -> bytes:
-        """
-        Read partition from HTTP file
+        """Read partition from HTTP file
         :param partition_number: partition number starting from 1
         :return: returns partition content with line break if available
         """
