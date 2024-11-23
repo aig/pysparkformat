@@ -36,6 +36,7 @@ jobs:
           cd src && pytest ../tests/
       - name: Build package
         run: |
+          python -m pip install --upgrade build
           python -m build
       - name: Publish package distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
