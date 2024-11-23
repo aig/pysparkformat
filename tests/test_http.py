@@ -6,7 +6,7 @@ from pathlib import Path
 from pyspark.sql import SparkSession
 
 from pysparkformat.http.csv import HTTPCSVDataSource
-from pysparkformat.http.jsonl import HTTPJSONLDataSource
+from pysparkformat.http.json import HTTPJSONDataSource
 
 
 class TestHTTP(unittest.TestCase):
@@ -23,13 +23,13 @@ class TestHTTP(unittest.TestCase):
         os.environ["PYSPARK_PYTHON"] = sys.executable
 
         if sys.platform == "win32":
-            hadoop_home = Path(__file__).parent.parent / "tools" / "windows" / "hadoop"
+            hadoop_home = Path(__file__).parent.parent / "tools" / "win32" / "hadoop"
             os.environ["HADOOP_HOME"] = str(hadoop_home)
             os.environ["PATH"] += ";" + str(hadoop_home / "bin")
 
         cls.spark = SparkSession.builder.appName("http-test-app").getOrCreate()
         cls.spark.dataSource.register(HTTPCSVDataSource)
-        cls.spark.dataSource.register(HTTPJSONLDataSource)
+        cls.spark.dataSource.register(HTTPJSONDataSource)
 
         cls.data_path = Path(__file__).resolve().parent / "data"
 
@@ -49,20 +49,18 @@ class TestHTTP(unittest.TestCase):
         options = {"header": "true"}
         self._check_csv(self.VALID_CSV_WITH_HEADER_NO_DATA, options)
 
-    # def test_jsonl_valid_nested(self):
-    #     options = {}
-    #     self._check_jsonl("valid-nested.jsonl", options)
+    def test_json_valid_nested(self):
+        options = {}
+        self._check_json("valid-nested.jsonl", options)
 
-    def _check_jsonl(self, name: str, options):
+    def _check_json(self, name: str, options):
         local_result = self.spark.read.options(**options).json(
             str(self.data_path / name)
         )
-        print(local_result.schema)
-        local_result.show()
-
         remote_result = (
-            self.spark.read.format("http-jsonl")
+            self.spark.read.format("http-json")
             .options(**options)
+            .schema(local_result.schema)
             .load(self.TEST_DATA_URL + name)
             .localCheckpoint()
         )
