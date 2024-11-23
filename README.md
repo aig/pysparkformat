@@ -9,7 +9,7 @@ Currently, the following format is supported:
 
 ### `http-csv`
 
-This format reads CSV data directly from a URL, eliminating the need to download the file locally before processing.
+This format reads CSV data directly from a URL.
 
 #### Options
 
@@ -25,6 +25,15 @@ The following options can be specified when using the `http-csv` format:
 | `maxLineSize`   | The maximum length of a line (in bytes).              | integer | `10000`   |
 | `partitionSize` | The size of each data partition (in bytes).           | integer | `1048576` |
 
+
+### `http-json`
+This format reads JSONLines data directly from a URL.
+
+#### Options
+| Name            | Description                                 | Type    | Default   |
+|-----------------|---------------------------------------------|---------|-----------|
+| `maxLineSize`   | The maximum length of a line (in bytes).    | integer | `10000`   |
+| `partitionSize` | The size of each data partition (in bytes). | integer | `1048576` |
 
 ## Installation
 
