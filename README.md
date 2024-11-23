@@ -78,7 +78,7 @@ spark.conf.set("spark.databricks.delta.formatCheck.enabled", False)
 spark.dataSource.register(HTTPCSVDataSource)
 
 # URL of the CSV file
-url = "https://www.stats.govt.nz/assets/Uploads/Annual-enterprise-survey/Annual-enterprise-survey-2023-financial-year-provisional/Download-data/annual-enterprise-survey-2023-financial-year-provisional.csv"
+url = "https://raw.githubusercontent.com/aig/pysparkformat/refs/heads/master/tests/data/valid-with-header.csv"
 
 # Read the data
 df = spark.read.format("http-csv") \
