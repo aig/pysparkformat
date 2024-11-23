@@ -38,6 +38,10 @@ class HTTPTextReader:
         self.file = file
 
     def read_first_line(self, max_line_size: int) -> bytes:
+        """Read first line from HTTP file
+        :param max_line_size: maximum line size, used as a buffer size
+        :return: returns first line content with line break if available
+        """
         chunks = []
 
         http_range_start = 0
@@ -78,10 +82,9 @@ class HTTPTextPartitionReader:
         self.max_line_size = max_line_size
 
     def read_partition(self, partition_number: int) -> bytes:
-        """
-        Read partition from HTTP file
+        """Read partition from HTTP file
         :param partition_number: partition number starting from 1
-        :return: returns partition content
+        :return: returns partition content with line break if available
         """
         import requests
 
@@ -111,7 +114,7 @@ class HTTPTextPartitionReader:
         content = response.content
         index = content.find(10, self.partition_size)
         if index != -1:
-            return content[:index]
+            return content[: index + 1]
 
         if http_range_end != self.file.content_length - 1:
             raise ValueError("Line is too long. Increase maxLineSize")
