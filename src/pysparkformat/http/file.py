@@ -81,7 +81,7 @@ class HTTPTextPartitionReader:
         """
         Read partition from HTTP file
         :param partition_number: partition number starting from 1
-        :return: returns partition content
+        :return: returns partition content with line break if available
         """
         import requests
 
@@ -111,7 +111,7 @@ class HTTPTextPartitionReader:
         content = response.content
         index = content.find(10, self.partition_size)
         if index != -1:
-            return content[:index]
+            return content[: index + 1]
 
         if http_range_end != self.file.content_length - 1:
             raise ValueError("Line is too long. Increase maxLineSize")
