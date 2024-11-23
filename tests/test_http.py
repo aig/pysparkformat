@@ -6,16 +6,17 @@ from pathlib import Path
 from pyspark.sql import SparkSession
 
 from pysparkformat.http.csv import HTTPCSVDataSource
+from pysparkformat.http.jsonl import HTTPJSONLDataSource
 
 
-class TestHttpCsv(unittest.TestCase):
+class TestHTTP(unittest.TestCase):
     TEST_DATA_URL = (
         "https://raw.githubusercontent.com/aig/pysparkformat/"
         + "refs/heads/master/tests/data/"
     )
-    VALID_WITH_HEADER = "valid-with-header.csv"
-    VALID_WITHOUT_HEADER = "valid-without-header.csv"
-    VALID_WITH_HEADER_NO_DATA = "valid-with-header-no-data.csv"
+    VALID_CSV_WITH_HEADER = "valid-with-header.csv"
+    VALID_CSV_WITHOUT_HEADER = "valid-without-header.csv"
+    VALID_CSV_WITH_HEADER_NO_DATA = "valid-with-header-no-data.csv"
 
     @classmethod
     def setUpClass(cls):
@@ -26,8 +27,9 @@ class TestHttpCsv(unittest.TestCase):
             os.environ["HADOOP_HOME"] = str(hadoop_home)
             os.environ["PATH"] += ";" + str(hadoop_home / "bin")
 
-        cls.spark = SparkSession.builder.appName("http-csv-test-app").getOrCreate()
+        cls.spark = SparkSession.builder.appName("http-test-app").getOrCreate()
         cls.spark.dataSource.register(HTTPCSVDataSource)
+        cls.spark.dataSource.register(HTTPJSONLDataSource)
 
         cls.data_path = Path(__file__).resolve().parent / "data"
 
@@ -37,17 +39,38 @@ class TestHttpCsv(unittest.TestCase):
 
     def test_csv_valid_with_header(self):
         options = {"header": "true"}
-        self._check_csv(self.VALID_WITH_HEADER, options)
+        self._check_csv(self.VALID_CSV_WITH_HEADER, options)
 
     def test_csv_valid_without_header(self):
         options = {"header": "false"}
-        self._check_csv(self.VALID_WITHOUT_HEADER, options)
+        self._check_csv(self.VALID_CSV_WITHOUT_HEADER, options)
 
     def test_csv_valid_with_header_no_data(self):
         options = {"header": "true"}
-        self._check_csv(self.VALID_WITH_HEADER_NO_DATA, options)
+        self._check_csv(self.VALID_CSV_WITH_HEADER_NO_DATA, options)
 
-    def _check_csv(self, name, options):
+    # def test_jsonl_valid_nested(self):
+    #     options = {}
+    #     self._check_jsonl("valid-nested.jsonl", options)
+
+    def _check_jsonl(self, name: str, options):
+        local_result = self.spark.read.options(**options).json(
+            str(self.data_path / name)
+        )
+        print(local_result.schema)
+        local_result.show()
+
+        remote_result = (
+            self.spark.read.format("http-jsonl")
+            .options(**options)
+            .load(self.TEST_DATA_URL + name)
+            .localCheckpoint()
+        )
+        self.assertEqual(remote_result.schema, local_result.schema)
+        self.assertEqual(remote_result.exceptAll(local_result).count(), 0)
+        self.assertEqual(local_result.exceptAll(remote_result).count(), 0)
+
+    def _check_csv(self, name: str, options: dict):
         remote_result = (
             self.spark.read.format("http-csv")
             .options(**options)

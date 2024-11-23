@@ -2,14 +2,19 @@ import csv
 import math
 
 from pyspark.sql.datasource import DataSource, DataSourceReader, InputPartition
-from pyspark.sql.types import StructType, StructField, StringType
+from pyspark.sql.types import StringType, StructField, StructType
 
-from pysparkformat.http.file import HTTPFile, HTTPTextReader, HTTPTextPartitionReader
+from pysparkformat.http.file import HTTPFile, HTTPTextPartitionReader, HTTPTextReader
 
 
 class Parameters:
     DEFAULT_PARTITION_SIZE = 1024 * 1024
     DEFAULT_MAX_LINE_SIZE = 10000
+    DEFAULT_ENCODING = "utf-8"
+    DEFAULT_SEP = ","
+    DEFAULT_QUOTE = '"'
+    DEFAULT_ESCAPE = "\\"
+    DEFAULT_HEADER = "false"
 
     def __init__(self, options: dict):
         self.options = options
@@ -18,7 +23,7 @@ class Parameters:
         if not self.path:
             raise ValueError("path is required")
 
-        self.header = str(options.get("header", "false")).lower() == "true"
+        self.header = str(options.get("header", self.DEFAULT_HEADER)).lower() == "true"
         self.max_line_size = max(
             int(options.get("maxLineSize", self.DEFAULT_MAX_LINE_SIZE)), 1
         )
@@ -29,10 +34,10 @@ class Parameters:
         if self.partition_size < self.max_line_size:
             raise ValueError("partitionSize must be greater than maxLineSize")
 
-        self.quote = str(options.get("quote", '"'))
-        self.sep = str(options.get("sep", ","))
-        self.encoding = str(options.get("encoding", "utf-8"))
-        self.escape = str(options.get("escape", "\\"))
+        self.quote = str(options.get("quote", self.DEFAULT_QUOTE))
+        self.sep = str(options.get("sep", self.DEFAULT_SEP))
+        self.encoding = str(options.get("encoding", self.DEFAULT_ENCODING))
+        self.escape = str(options.get("escape", self.DEFAULT_ESCAPE))
 
 
 class HTTPCSVDataSource(DataSource):
@@ -43,7 +48,7 @@ class HTTPCSVDataSource(DataSource):
         self.file = HTTPFile(params.path)
 
         file_reader = HTTPTextReader(self.file)
-        data = file_reader.read_line(params.max_line_size)
+        data = file_reader.read_first_line(params.max_line_size)
 
         csv_reader = csv.reader(
             data.decode(params.encoding).splitlines(),

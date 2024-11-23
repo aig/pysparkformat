@@ -1,49 +1,86 @@
-# pysparkformat
+# pysparkformat: PySpark Data Source Formats
 
-Apache Spark 4.0 introduces a new data source API called V2 and even more now we can use python to create custom data sources. 
-This is a great feature that allows us to create custom data sources that can be used in any pyspark projects.
+This project provides a collection of custom data source formats for Apache Spark 4.0+ and Databricks, 
+leveraging the new V2 data source PySpark API.  
 
-This project is intended to collect all custom pyspark formats that I have created for my projects.
+## Supported Formats
 
-## http-csv format
-| Name          | Description                           | Default |
-|---------------|---------------------------------------|:-------:|
-| header        | Whether the file has a header or not  |  false  |
-| sep           | The delimiter used in the file        |    ,    |
-| encoding      | The encoding of the file              |  UTF-8  |
-| quote         | The quote character                   |    "    |
-| escape        | The escape character                  |    \    |
-| maxLineSize   | The maximum length of a line in bytes |  10000  |
-| partitionSize | The size of each partition in bytes   | 1048576 |
+Currently, the following format is supported:
 
-You are welcome to contribute with new formats or improvements in the existing ones.
+### `http-csv`
 
-## Usage
+This format reads CSV data directly from a URL, eliminating the need to download the file locally before processing.
+
+#### Options
+
+The following options can be specified when using the `http-csv` format:
+
+| Name            | Description                                           | Type    | Default   |
+|-----------------|-------------------------------------------------------|---------|-----------|
+| `header`        | Indicates whether the CSV file contains a header row. | boolean | `false`   |
+| `sep`           | The field delimiter character.                        | string  | `,`       |
+| `encoding`      | The character encoding of the file.                   | string  | `utf-8`   |
+| `quote`         | The quote character.                                  | string  | `"`       |
+| `escape`        | The escape character.                                 | string  | `\`       |
+| `maxLineSize`   | The maximum length of a line (in bytes).              | integer | `10000`   |
+| `partitionSize` | The size of each data partition (in bytes).           | integer | `1048576` |
+
+
+## Installation
+
+This requires PySpark 4.0 or later to be installed:
 
 ```bash
 pip install pyspark==4.0.0.dev2
+```
+
+Install the package using pip:
+
+```bash
 pip install pysparkformat
 ```
 
-You also can use this package in Databricks notebooks. Tested with Databricks Runtime 15.4 LTS.
-Just install it using the following command to general-purpose cluster:
-```bash
+
+**For Databricks:**
+
+Install within a Databricks notebook using:
+
+```python
 %pip install pysparkformat
 ```
+This has been tested with Databricks Runtime 15.4 LTS and later.
+
+
+## Usage Example: `http-csv`
+
+This example demonstrates reading a CSV file from a URL using the `http-csv` format.
 
 ```python
 from pyspark.sql import SparkSession
 from pysparkformat.http.csv import HTTPCSVDataSource
 
-# you can comment the following line if you are running this code in Databricks
+# Initialize SparkSession (only needed if not running in Databricks)
 spark = SparkSession.builder.appName("custom-datasource-example").getOrCreate()
 
-# uncomment to disable format check for Databricks Runtime
-# spark.conf.set("spark.databricks.delta.formatCheck.enabled", False)
+# You may need to disable format checking depending on your cluster configuration
+spark.conf.set("spark.databricks.delta.formatCheck.enabled", False)
 
+# Register the custom data source
 spark.dataSource.register(HTTPCSVDataSource)
 
+# URL of the CSV file
 url = "https://www.stats.govt.nz/assets/Uploads/Annual-enterprise-survey/Annual-enterprise-survey-2023-financial-year-provisional/Download-data/annual-enterprise-survey-2023-financial-year-provisional.csv"
-df = spark.read.format("http-csv").option("header", True).load(url)
-df.show() # or use display(df) in Databricks
+
+# Read the data
+df = spark.read.format("http-csv") \
+             .option("header", True) \
+             .load(url)
+
+# Display the DataFrame (use `display(df)` in Databricks)
+df.show()
 ```
+
+## Contributing
+
+Contributions are welcome! 
+We encourage the addition of new custom data source formats and improvements to existing ones.
