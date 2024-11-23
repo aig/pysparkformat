@@ -38,9 +38,9 @@ class HTTPTextReader:
         self.file = file
 
     def read_first_line(self, max_line_size: int) -> bytes:
-        http_range_start = 0
-
         chunks = []
+
+        http_range_start = 0
         while True:
             http_range_end = min(
                 http_range_start + max_line_size, self.file.content_length - 1
@@ -56,10 +56,12 @@ class HTTPTextReader:
                 raise ValueError("HTTP range request failed")
 
             chunk = response.content
-            chunks.append(chunk)
-
-            if chunk.find(10) != -1:
+            index = chunk.find(10)
+            if index != -1:
+                chunks.append(chunk[: index + 1])
                 break
+
+            chunks.append(chunk)
 
             http_range_start = http_range_end + 1
 
