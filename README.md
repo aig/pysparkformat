@@ -108,7 +108,7 @@ url = "https://raw.githubusercontent.com/aig/pysparkformat/refs/heads/master/tes
 
 # Read the data (you must specify the schema at the moment)
 df = spark.read.format("http-json") \
-             .schema("name STRING, wins ARRAY<ARRAY<STRING>>") \
+             .schema("name string, wins array<array<string>>") \
              .load(url)
 
 # Display the DataFrame (use `display(df)` in Databricks)
