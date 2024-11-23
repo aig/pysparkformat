@@ -49,7 +49,7 @@ class TestHTTP(unittest.TestCase):
         options = {"header": "true"}
         self._check_csv(self.VALID_CSV_WITH_HEADER_NO_DATA, options)
 
-    def test_jsonl_valid_nested(self):
+    def test_json_valid_nested(self):
         options = {}
         self._check_json("valid-nested.jsonl", options)
 
