@@ -49,20 +49,18 @@ class TestHTTP(unittest.TestCase):
         options = {"header": "true"}
         self._check_csv(self.VALID_CSV_WITH_HEADER_NO_DATA, options)
 
-    # def test_jsonl_valid_nested(self):
-    #     options = {}
-    #     self._check_jsonl("valid-nested.jsonl", options)
+    def test_jsonl_valid_nested(self):
+        options = {}
+        self._check_jsonl("valid-nested.jsonl", options)
 
     def _check_jsonl(self, name: str, options):
         local_result = self.spark.read.options(**options).json(
             str(self.data_path / name)
         )
-        print(local_result.schema)
-        local_result.show()
-
         remote_result = (
             self.spark.read.format("http-jsonl")
             .options(**options)
+            .schema(local_result.schema)
             .load(self.TEST_DATA_URL + name)
             .localCheckpoint()
         )
@@ -80,6 +78,7 @@ class TestHTTP(unittest.TestCase):
         local_result = self.spark.read.options(**options).csv(
             str(self.data_path / name)
         )
+        local_result.show()
         self.assertEqual(remote_result.schema, local_result.schema)
         self.assertEqual(remote_result.exceptAll(local_result).count(), 0)
         self.assertEqual(local_result.exceptAll(remote_result).count(), 0)

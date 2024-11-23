@@ -1,13 +1,15 @@
 import json
+import math
 
-from pyspark.sql.datasource import DataSource
+from pyspark.sql.datasource import DataSource, DataSourceReader, InputPartition
 from pyspark.sql.types import StructType
 
-from pysparkformat.http.file import HTTPFile, HTTPTextReader
+from pysparkformat.http.file import HTTPFile, HTTPTextPartitionReader
 
 
 class Parameters:
     DEFAULT_MAX_LINE_SIZE = 10000
+    DEFAULT_PARTITION_SIZE = 1024 * 1024
 
     def __init__(self, options: dict):
         self.options = options
@@ -19,6 +21,11 @@ class Parameters:
             int(options.get("maxLineSize", self.DEFAULT_MAX_LINE_SIZE)), 1
         )
 
+        self.partition_size = max(
+            int(options.get("partitionSize", self.DEFAULT_PARTITION_SIZE)),
+            self.max_line_size,
+        )
+
 
 class HTTPJSONLDataSource(DataSource):
     def __init__(self, options: dict):
@@ -27,28 +34,41 @@ class HTTPJSONLDataSource(DataSource):
 
         params = Parameters(options)
         self.file = HTTPFile(params.path)
-        file_reader = HTTPTextReader(self.file)
-        data = file_reader.read_first_line(params.max_line_size)
-        parsed = json.loads(data)
-        print(parsed)
-
 
     @classmethod
     def name(cls):
         return "http-jsonl"
 
     def schema(self):
-        return self.schema
+        raise NotImplementedError
 
     def reader(self, schema: StructType):
         return JSONLDataSourceReader(schema, self.options, self.file)
 
 
-class JSONLDataSourceReader:
+class JSONLDataSourceReader(DataSourceReader):
     def __init__(self, schema: StructType, options: dict, file: HTTPFile):
         self.schema = schema
         self.options = options
         self.file = file
+        self.params = Parameters(options)
 
-    def read(self):
-        raise NotImplementedError
+    def partitions(self):
+        n = math.ceil(self.file.content_length / self.params.partition_size)
+        return [InputPartition(i + 1) for i in range(n)]
+
+    def read(self, partition: InputPartition):
+        file_reader = HTTPTextPartitionReader(
+            self.file, self.params.partition_size, self.params.max_line_size
+        )
+
+        content = file_reader.read_partition(partition.value)
+
+        # if not first partition, skip first line, we read it in previous partition
+        if partition.value != 1:
+            index = content.find(10)
+            if index != -1:
+                content = content[index + 1 :]
+
+        for line in content.splitlines():
+            yield tuple(json.loads(line).values())
