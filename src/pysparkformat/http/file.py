@@ -38,6 +38,10 @@ class HTTPTextReader:
         self.file = file
 
     def read_first_line(self, max_line_size: int) -> bytes:
+        """Read first line from HTTP file
+        :param max_line_size: maximum line size, used as a buffer size
+        :return: returns first line content with line break if available
+        """
         chunks = []
 
         http_range_start = 0
