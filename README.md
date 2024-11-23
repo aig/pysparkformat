@@ -69,7 +69,7 @@ from pyspark.sql import SparkSession
 from pysparkformat.http.csv import HTTPCSVDataSource
 
 # Initialize SparkSession (only needed if not running in Databricks)
-spark = SparkSession.builder.appName("custom-datasource-example").getOrCreate()
+spark = SparkSession.builder.appName("http-csv-example").getOrCreate()
 
 # You may need to disable format checking depending on your cluster configuration
 spark.conf.set("spark.databricks.delta.formatCheck.enabled", False)
@@ -95,7 +95,7 @@ from pyspark.sql import SparkSession
 from pysparkformat.http.json import HTTPJSONDataSource
 
 # Initialize SparkSession (only needed if not running in Databricks)
-spark = SparkSession.builder.appName("custom-datasource-example").getOrCreate()
+spark = SparkSession.builder.appName("http-json-example").getOrCreate()
 
 # You may need to disable format checking depending on your cluster configuration
 spark.conf.set("spark.databricks.delta.formatCheck.enabled", False)
