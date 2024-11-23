@@ -27,7 +27,7 @@ class Parameters:
         )
 
 
-class HTTPJSONLDataSource(DataSource):
+class HTTPJSONDataSource(DataSource):
     def __init__(self, options: dict):
         super().__init__(options)
         self.options = options
@@ -37,16 +37,16 @@ class HTTPJSONLDataSource(DataSource):
 
     @classmethod
     def name(cls):
-        return "http-jsonl"
+        return "http-json"
 
     def schema(self):
         raise NotImplementedError
 
     def reader(self, schema: StructType):
-        return JSONLDataSourceReader(schema, self.options, self.file)
+        return JSONDataSourceReader(schema, self.options, self.file)
 
 
-class JSONLDataSourceReader(DataSourceReader):
+class JSONDataSourceReader(DataSourceReader):
     def __init__(self, schema: StructType, options: dict, file: HTTPFile):
         self.schema = schema
         self.options = options

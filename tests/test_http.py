@@ -6,7 +6,7 @@ from pathlib import Path
 from pyspark.sql import SparkSession
 
 from pysparkformat.http.csv import HTTPCSVDataSource
-from pysparkformat.http.jsonl import HTTPJSONLDataSource
+from pysparkformat.http.json import HTTPJSONDataSource
 
 
 class TestHTTP(unittest.TestCase):
@@ -29,7 +29,7 @@ class TestHTTP(unittest.TestCase):
 
         cls.spark = SparkSession.builder.appName("http-test-app").getOrCreate()
         cls.spark.dataSource.register(HTTPCSVDataSource)
-        cls.spark.dataSource.register(HTTPJSONLDataSource)
+        cls.spark.dataSource.register(HTTPJSONDataSource)
 
         cls.data_path = Path(__file__).resolve().parent / "data"
 
@@ -51,14 +51,14 @@ class TestHTTP(unittest.TestCase):
 
     def test_jsonl_valid_nested(self):
         options = {}
-        self._check_jsonl("valid-nested.jsonl", options)
+        self._check_json("valid-nested.jsonl", options)
 
-    def _check_jsonl(self, name: str, options):
+    def _check_json(self, name: str, options):
         local_result = self.spark.read.options(**options).json(
             str(self.data_path / name)
         )
         remote_result = (
-            self.spark.read.format("http-jsonl")
+            self.spark.read.format("http-json")
             .options(**options)
             .schema(local_result.schema)
             .load(self.TEST_DATA_URL + name)
@@ -78,7 +78,6 @@ class TestHTTP(unittest.TestCase):
         local_result = self.spark.read.options(**options).csv(
             str(self.data_path / name)
         )
-        local_result.show()
         self.assertEqual(remote_result.schema, local_result.schema)
         self.assertEqual(remote_result.exceptAll(local_result).count(), 0)
         self.assertEqual(local_result.exceptAll(remote_result).count(), 0)

@@ -9,7 +9,7 @@ Currently, the following format is supported:
 
 ### `http-csv`
 
-This format reads CSV data directly from a URL.
+This format reads in parallel CSV directly from a URL.
 
 #### Options
 
@@ -27,7 +27,7 @@ The following options can be specified when using the `http-csv` format:
 
 
 ### `http-json`
-This format reads JSONLines data directly from a URL.
+This format reads in parallel JSON Lines directly from a URL. You must specify the schema when using this format.
 
 #### Options
 | Name            | Description                                 | Type    | Default   |
@@ -89,6 +89,31 @@ df = spark.read.format("http-csv") \
 df.show()
 ```
 
+## Usage Example: `http-json`
+```python
+from pyspark.sql import SparkSession
+from pysparkformat.http.json import HTTPJSONDataSource
+
+# Initialize SparkSession (only needed if not running in Databricks)
+spark = SparkSession.builder.appName("custom-datasource-example").getOrCreate()
+
+# You may need to disable format checking depending on your cluster configuration
+spark.conf.set("spark.databricks.delta.formatCheck.enabled", False)
+
+# Register the custom data source
+spark.dataSource.register(HTTPJSONDataSource)
+
+# URL of the JSON file
+url = "https://raw.githubusercontent.com/aig/pysparkformat/refs/heads/master/tests/data/valid-nested.jsonl"
+
+# Read the data (you must specify the schema at the moment)
+df = spark.read.format("http-json") \
+             .schema("name STRING, wins ARRAY<ARRAY<STRING>>") \
+             .load(url)
+
+# Display the DataFrame (use `display(df)` in Databricks)
+df.show()
+```
 ## Contributing
 
 Contributions are welcome! 
