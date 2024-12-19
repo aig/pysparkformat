@@ -31,9 +31,10 @@ jobs:
       - name: Run ruff
         run: |
           ruff check --output-format=github .
-      - name: Test with pytest
+      - name: Test with coverage
         run: |
-          cd src && pytest ../tests/
+          cd src && coverage run -m pytest ../tests/
+          coverage report
       - name: Build package
         run: |
           python -m pip install --upgrade build
