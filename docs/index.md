@@ -1,7 +1,7 @@
-# pysparkformat: PySpark Data Source Formats
+# PySparkFormat
 
-This project provides a collection of custom data source formats for Apache Spark 4.0+ and Databricks, 
-leveraging the new V2 data source PySpark API.  
+This project provides a collection of custom data source formats for Apache Spark 4.0+ and Databricks,
+leveraging the new V2 data source PySpark API.
 
 ---
 
@@ -17,27 +17,54 @@ leveraging the new V2 data source PySpark API.
 
 Currently, the following formats are supported:
 
-| Format      | Read | Write | Description                                       |
-|-------------|------|-------|---------------------------------------------------|
-| `http-csv`  | Yes  | No    | Reads CSV files in parallel directly from a URL.  |
-| `http-json` | Yes  | No    | Reads JSON Lines in parallel directly from a URL. |
+### `http-csv`
 
+This format reads in parallel CSV directly from a URL.
+
+#### Options
+
+The following options can be specified when using the `http-csv` format:
+
+| Name            | Description                                           | Type    | Default   |
+|-----------------|-------------------------------------------------------|---------|-----------|
+| `header`        | Indicates whether the CSV file contains a header row. | boolean | `false`   |
+| `sep`           | The field delimiter character.                        | string  | `,`       |
+| `encoding`      | The character encoding of the file.                   | string  | `utf-8`   |
+| `quote`         | The quote character.                                  | string  | `"`       |
+| `escape`        | The escape character.                                 | string  | `\`       |
+| `maxLineSize`   | The maximum length of a line (in bytes).              | integer | `10000`   |
+| `partitionSize` | The size of each data partition (in bytes).           | integer | `1048576` |
+
+
+### `http-json`
+This format reads in parallel JSON Lines directly from a URL. You must specify the schema when using this format.
+
+#### Options
+| Name            | Description                                 | Type    | Default   |
+|-----------------|---------------------------------------------|---------|-----------|
+| `maxLineSize`   | The maximum length of a line (in bytes).    | integer | `10000`   |
+| `partitionSize` | The size of each data partition (in bytes). | integer | `1048576` |
 
 ## Installation
 
-```bash
-# Install PySpark 4.0.0.dev2
-pip install pyspark==4.0.0.dev2
+This requires PySpark 4.0 or later to be installed:
 
-# Install the package using pip
+```bash
+pip install pyspark==4.0.0.dev2
+```
+
+Install the package using pip:
+
+```bash
 pip install pysparkformat
 ```
+
 
 **For Databricks:**
 
 Install within a Databricks notebook using:
 
-```shell
+```bash
 %pip install pysparkformat
 ```
 This has been tested with Databricks Runtime 15.4 LTS and later.
@@ -99,5 +126,5 @@ df.show()
 ```
 ## Contributing
 
-Contributions are welcome! 
+Contributions are welcome!
 We encourage the addition of new custom data source formats and improvements to existing ones.
