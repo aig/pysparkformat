@@ -12,7 +12,7 @@ from pysparkformat.http.json import HTTPJSONDataSource
 class TestHTTP(unittest.TestCase):
     TEST_DATA_URL = (
         "https://raw.githubusercontent.com/aig/pysparkformat/"
-        + "refs/heads/master/tests/data/"
+        + "refs/heads/main/tests/data/"
     )
     VALID_CSV_WITH_HEADER = "valid-with-header.csv"
     VALID_CSV_WITHOUT_HEADER = "valid-without-header.csv"
