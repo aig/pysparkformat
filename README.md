@@ -3,6 +3,16 @@
 This project provides a collection of custom data source formats for Apache Spark 4.0+ and Databricks, 
 leveraging the new V2 data source PySpark API.  
 
+---
+
+<p>
+    <a href="https://pypi.org/project/pysparkformat/">
+        <img src="https://img.shields.io/pypi/v/pysparkformat?color=green&amp;style=for-the-badge" alt="Latest Python Release"/>
+    </a>
+</p>
+
+---
+
 ## Supported Formats
 
 Currently, the following formats are supported:
