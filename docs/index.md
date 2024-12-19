@@ -6,13 +6,15 @@ leveraging the new V2 data source PySpark API.
 ---
 
 <p>
+    <a href="https://pysparkformat.readthedocs.io/en/latest/?badge=latest">
+        <img src="https://img.shields.io/readthedocs/pysparkformat?style=for-the-badge" alt="Documentation Status"/>
+    </a>
     <a href="https://pypi.org/project/pysparkformat/">
         <img src="https://img.shields.io/pypi/v/pysparkformat?color=green&amp;style=for-the-badge" alt="Latest Python Release"/>
     </a>
 </p>
 
 ---
-
 
 ## Formats
 
