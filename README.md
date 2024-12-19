@@ -5,7 +5,7 @@ leveraging the new V2 data source PySpark API.
 
 ## Supported Formats
 
-Currently, the following format is supported:
+Currently, the following formats are supported:
 
 ### `http-csv`
 
