@@ -1,4 +1,4 @@
-# PySpark Data Source Formats
+# pysparkformat
 
 This project provides a collection of custom data source formats for Apache Spark 4.0+ and Databricks,
 leveraging the new V2 data source PySpark API.
@@ -6,9 +6,6 @@ leveraging the new V2 data source PySpark API.
 ---
 
 <p>
-    <a href="https://pysparkformat.readthedocs.io/en/latest/?badge=latest">
-        <img src="https://img.shields.io/readthedocs/pysparkformat?style=for-the-badge" alt="Documentation Status"/>
-    </a>
     <a href="https://pypi.org/project/pysparkformat/">
         <img src="https://img.shields.io/pypi/v/pysparkformat?color=green&amp;style=for-the-badge" alt="Latest Python Release"/>
     </a>
@@ -86,6 +83,8 @@ df.show()
 
 ## `http-json`
 
+The following options can be specified when using the `http-json` format:
+
 | Name            | Description                                 | Type    | Default   |
 |-----------------|---------------------------------------------|---------|-----------|
 | `maxLineSize`   | The maximum length of a line (in bytes).    | integer | `10000`   |
@@ -116,8 +115,3 @@ df = spark.read.format("http-json").schema(json_schema).load(url)
 # Display the DataFrame (use `display(df)` in Databricks)
 df.show()
 ```
-
-## Contribute
-
-Contributions are welcome! 
-We encourage the addition of new custom data source formats and improvements to existing ones.
