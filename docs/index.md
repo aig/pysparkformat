@@ -28,8 +28,8 @@ Currently, the following formats are supported:
 ## Installation
 
 ```bash
-# Install PySpark 4.0.0.dev2
-pip install pyspark==4.0.0.dev2
+# Install PySpark 4.0.0
+pip install pyspark==4.0.0
 
 # Install the package using pip
 pip install pysparkformat

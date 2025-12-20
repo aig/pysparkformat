@@ -4,3 +4,5 @@ dist
 *.iml
 *.egg-info
 __pycache__
+.pytest_cache
+.vscode

@@ -29,8 +29,8 @@ Currently, the following formats are supported:
 ## Installation
 
 ```bash
-# Install PySpark 4.0.0.dev2
-pip install pyspark==4.0.0.dev2
+# Install PySpark 4.0.0
+pip install pyspark==4.0.0
 
 # Install the package using pip
 pip install pysparkformat
@@ -75,7 +75,7 @@ spark.conf.set("spark.databricks.delta.formatCheck.enabled", False)
 spark.dataSource.register(HTTPCSVDataSource)
 
 # URL of the CSV file
-url = "https://raw.githubusercontent.com/aig/pysparkformat/refs/heads/master/tests/data/valid-with-header.csv"
+url = "https://raw.githubusercontent.com/aig/pysparkformat/refs/heads/main/tests/data/valid-with-header.csv"
 
 # Read the data
 df = spark.read.format("http-csv").option("header", True).load(url)
@@ -107,7 +107,7 @@ spark.conf.set("spark.databricks.delta.formatCheck.enabled", False)
 spark.dataSource.register(HTTPJSONDataSource)
 
 # URL of the JSON file
-url = "https://raw.githubusercontent.com/aig/pysparkformat/refs/heads/master/tests/data/valid-nested.jsonl"
+url = "https://raw.githubusercontent.com/aig/pysparkformat/refs/heads/main/tests/data/valid-nested.jsonl"
 
 # Read the data (you must specify the schema at the moment)
 json_schema = "name string, wins array<array<string>>"
