@@ -125,31 +125,31 @@ df.show()
 
 ## `http-page`
 
-The `http-page` format fetches an HTML page. By default, it only fetches the main page.
-If a `linkPattern` is specified, it also parses the HTML to extract matching links
-(`<a href="...">` tags) and fetches their content. Each URL becomes a separate Spark partition,
-enabling parallel downloads across the cluster.
+The `http-page` format fetches an HTML page, parses all links (`<a href="...">` tags),
+and performs HEAD requests on each link to retrieve response headers. Each link becomes
+a separate Spark partition, enabling parallel header fetching across the cluster.
 
 ### Schema
 
 The output DataFrame has the following fixed schema:
 
-| Column      | Type          | Nullable | Description                           |
-|-------------|---------------|----------|---------------------------------------|
-| `url`       | StringType    | No       | The URL of the fetched resource       |
-| `timestamp` | TimestampType | No       | When the content was fetched (UTC)    |
-| `content`   | BinaryType    | Yes      | Binary content of the fetched resource|
+| Column        | Type              | Nullable | Description                              |
+|---------------|-------------------|----------|------------------------------------------|
+| `url`         | StringType        | No       | The URL of the link                      |
+| `timestamp`   | TimestampType     | No       | When the HEAD request was made (UTC)     |
+| `http_status` | IntegerType       | Yes      | HTTP response status code                |
+| `headers`     | ArrayType(String) | Yes      | Response headers as "key: value" strings |
+| `error`       | StringType        | Yes      | Error message if request failed          |
 
 ### Options
 
-| Name              | Description                                           | Type    | Default            |
-|-------------------|-------------------------------------------------------|---------|--------------------| 
-| `timeout`         | Request timeout in seconds.                           | integer | `30`               |
-| `userAgent`       | User agent string for HTTP requests.                  | string  | `pysparkformat/1.0`|
-| `followRedirects` | Follow HTTP redirects.                                | boolean | `true`             |
-| `linkPattern`     | Regex pattern to match links to also fetch (optional).| string  | (none)             |
+| Name              | Description                                    | Type    | Default            |
+|-------------------|------------------------------------------------|---------|--------------------| 
+| `timeout`         | Request timeout in seconds.                    | integer | `30`               |
+| `userAgent`       | User agent string for HTTP requests.           | string  | `pysparkformat/1.0`|
+| `followRedirects` | Follow HTTP redirects.                         | boolean | `true`             |
 
-### Example: Fetch Main Page Only
+### Example: Get Headers for All Links
 
 ```python
 from pyspark.sql import SparkSession
@@ -161,33 +161,26 @@ spark = SparkSession.builder.appName("http-page-example").getOrCreate()
 # Register the custom data source
 spark.dataSource.register(HTTPPageDataSource)
 
-# Fetch only the main page
+# Parse page and get headers for all links
 df = spark.read.format("http-page").load("https://example.com/")
 
-# Display results (1 row with the main page content)
-df.show()
+# Display results
+df.show(truncate=False)
 ```
 
-### Example: Fetch Main Page Plus Matching Links
+### Example: Extract Content-Length from Headers
 
 ```python
-# Fetch main page and all PDF files linked from it
-df = spark.read.format("http-page") \
-    .option("linkPattern", r"\.pdf$") \
-    .load("https://example.com/documents/")
+from pyspark.sql.functions import expr
 
-df.show()
-```
+# Get headers and extract Content-Length
+df = spark.read.format("http-page").load("https://example.com/documents/")
 
-### Example: Fetch Main Page Plus All Links
-
-```python
-# Fetch main page and all http/https links (use .* to match everything)
-df = spark.read.format("http-page") \
-    .option("linkPattern", r".*") \
-    .load("https://example.com/")
-
-df.show()
+# Filter headers to find Content-Length
+df.select(
+    "url",
+    expr("filter(headers, h -> h like 'Content-Length%')").alias("content_length")
+).show(truncate=False)
 ```
 
 ### Example: Custom Timeout and User Agent
@@ -204,7 +197,8 @@ df.show()
 
 ### Use Cases
 
-- **Single page fetch**: Download a single web page as binary content
-- **Document collection**: Fetch main page plus all PDF, CSV, or other files linked from it
-- **Data pipeline ingestion**: Automatically discover and download new files from a web directory
-- **Content archival**: Save binary content of the main page and selected linked resources
+- **Link discovery**: Find all links on a webpage
+- **File size checking**: Get Content-Length headers without downloading files
+- **Content-Type detection**: Determine MIME types of linked resources
+- **Link validation**: Check which links are accessible (have headers)
+- **Last-Modified tracking**: Monitor when linked resources were last updated

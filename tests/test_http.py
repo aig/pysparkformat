@@ -84,45 +84,30 @@ class TestHTTP(unittest.TestCase):
         self.assertEqual(remote_result.exceptAll(local_result).count(), 0)
         self.assertEqual(local_result.exceptAll(remote_result).count(), 0)
 
-    def test_page_fetch_main_page(self):
-        """Test that http-page fetches main page by default."""
+    def test_page_parses_links(self):
+        """Test that http-page parses all links and returns headers."""
         base_url = "https://github.com/aig/pysparkformat"
         result = self.spark.read.format("http-page").load(base_url).localCheckpoint()
 
         # Check schema
-        self.assertEqual(len(result.schema.fields), 3)
+        self.assertEqual(len(result.schema.fields), 5)
         self.assertEqual(result.schema.fields[0].name, "url")
         self.assertEqual(result.schema.fields[1].name, "timestamp")
-        self.assertEqual(result.schema.fields[2].name, "content")
+        self.assertEqual(result.schema.fields[2].name, "http_status")
+        self.assertEqual(result.schema.fields[3].name, "headers")
+        self.assertEqual(result.schema.fields[4].name, "error")
 
-        # Should have fetched exactly one page (the main page)
-        self.assertEqual(result.count(), 1)
+        # Should have fetched multiple links from the page
+        self.assertGreater(result.count(), 0)
 
-        # The URL should be the base URL
+        # All URLs should be http/https
         urls = result.select("url").collect()
-        self.assertEqual(urls[0].url, base_url)
+        for row in urls:
+            self.assertTrue(row.url.startswith("http"))
 
-    def test_page_with_link_pattern(self):
-        """Test that linkPattern option adds matching links."""
-        base_url = "https://github.com/aig/pysparkformat"
-        # Use GitHub repository tree page that has links to files
-        result = (
-            self.spark.read.format("http-page")
-            .option("linkPattern", r"/blob/")
-            .load(base_url)
-            .localCheckpoint()
-        )
-
-        # Should have the main page plus matching links
-        self.assertGreater(result.count(), 1)
-
-        # First URL should be the base URL
-        urls = [row.url for row in result.select("url").collect()]
-        self.assertEqual(urls[0], base_url)
-
-        # Other URLs should match the pattern
-        for url in urls[1:]:
-            self.assertIn("/blob/", url)
+        # Check that we have some successful responses (http_status not null)
+        successful = result.filter("http_status IS NOT NULL").count()
+        self.assertGreater(successful, 0)
 
 
 if __name__ == "__main__":

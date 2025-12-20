@@ -1,11 +1,10 @@
 """
 HTTP Page DataSource for PySpark
 
-This module provides a PySpark DataSource that fetches an HTML page.
-By default, it only fetches the main page. If a linkPattern is specified,
-it also parses the HTML to extract matching links and fetches their content.
-Each URL becomes a partition, and the result contains url, timestamp,
-and binary content.
+This module provides a PySpark DataSource that fetches an HTML page,
+parses all links from it, and performs HEAD requests on each link to get headers.
+Each link becomes a partition, and the result contains url, timestamp,
+and response headers as an array.
 """
 
 from datetime import datetime, timezone
@@ -15,7 +14,8 @@ from urllib.parse import urljoin, urlparse
 import requests
 from pyspark.sql.datasource import DataSource, DataSourceReader, InputPartition
 from pyspark.sql.types import (
-    BinaryType,
+    ArrayType,
+    IntegerType,
     StringType,
     StructField,
     StructType,
@@ -64,24 +64,19 @@ class Parameters:
             == "true"
         )
 
-        # Optional pattern to extract and fetch links from the page
-        self.link_pattern = options.get("linkPattern")
-
 
 class HTTPPageDataSource(DataSource):
     """
-    PySpark DataSource that fetches an HTML page and optionally its links.
+    PySpark DataSource that parses an HTML page for links and fetches headers.
 
-    By default, only the main page is fetched. If linkPattern is specified,
-    the HTML is parsed, matching links are extracted, and their content is
-    also fetched. Each URL becomes a separate partition.
+    Fetches the HTML page, extracts all links, creates a partition per link,
+    and performs HEAD requests to get response headers for each link.
 
     Options:
-        - path: URL of the HTML page to fetch (required)
+        - path: URL of the HTML page to parse (required)
         - timeout: Request timeout in seconds (default: 30)
         - userAgent: User agent string for requests (default: pysparkformat/1.0)
         - followRedirects: Follow HTTP redirects (default: true)
-        - linkPattern: Regex pattern to match links to also fetch (optional)
     """
 
     def __init__(self, options: dict):
@@ -97,7 +92,9 @@ class HTTPPageDataSource(DataSource):
             [
                 StructField("url", StringType(), False),
                 StructField("timestamp", TimestampType(), False),
-                StructField("content", BinaryType(), True),
+                StructField("http_status", IntegerType(), True),
+                StructField("headers", ArrayType(StringType()), True),
+                StructField("error", StringType(), True),
             ]
         )
 
@@ -115,10 +112,8 @@ class HTTPPageDataSourceReader(DataSourceReader):
 
     def partitions(self):
         """
-        Create partitions: main page always included, matching links if pattern set.
+        Fetch HTML page, parse all links, create a partition per link.
         """
-        import re
-
         headers = {"User-Agent": self.params.user_agent}
 
         response = requests.get(
@@ -131,49 +126,43 @@ class HTTPPageDataSourceReader(DataSourceReader):
         if response.status_code != 200:
             raise ValueError(f"Failed to fetch base page: HTTP {response.status_code}")
 
-        # Always start with the main page
-        urls = [self.params.path]
+        # Parse HTML to extract all links
+        parser = LinkExtractor(self.params.path)
+        parser.feed(response.text)
 
-        # If linkPattern is specified, parse HTML and add matching links
-        if self.params.link_pattern:
-            parser = LinkExtractor(self.params.path)
-            parser.feed(response.text)
+        # Get unique links
+        links = list(dict.fromkeys(parser.links))
 
-            # Get unique links
-            links = list(dict.fromkeys(parser.links))
-
-            # Filter by pattern
-            pattern = re.compile(self.params.link_pattern)
-            matching_links = [link for link in links if pattern.search(link)]
-
-            # Add matching links (excluding duplicates of main page)
-            for link in matching_links:
-                if link not in urls:
-                    urls.append(link)
-
-        # Create a partition for each URL
-        return [InputPartition(url) for url in urls]
+        # Create a partition for each link
+        return [InputPartition(link) for link in links]
 
     def read(self, partition: InputPartition):
         """
-        Fetch the content of the URL in this partition and yield the result.
+        Perform HEAD request on the URL and yield url, timestamp, status, headers.
         """
         url = partition.value
-        headers = {"User-Agent": self.params.user_agent}
+        request_headers = {"User-Agent": self.params.user_agent}
 
         timestamp = datetime.now(timezone.utc)
+        error = None
 
         try:
-            response = requests.get(
+            response = requests.head(
                 url,
-                headers=headers,
+                headers=request_headers,
                 timeout=self.params.timeout,
                 allow_redirects=self.params.follow_redirects,
             )
 
-            content = response.content if response.status_code == 200 else None
+            http_status = response.status_code
+            # Convert headers to array of "key: value" strings
+            response_headers = [
+                f"{key}: {value}" for key, value in response.headers.items()
+            ]
 
-        except requests.RequestException:
-            content = None
+        except requests.RequestException as e:
+            http_status = None
+            response_headers = None
+            error = str(e)
 
-        yield (url, timestamp, content)
+        yield (url, timestamp, http_status, response_headers, error)

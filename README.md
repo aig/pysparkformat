@@ -82,14 +82,9 @@ from pysparkformat.http.page import HTTPPageDataSource
 
 spark.dataSource.register(HTTPPageDataSource)
 
-# Fetch main page only
+# Parse page for all links and get headers via HEAD requests
 df = spark.read.format("http-page").load("https://example.com/")
-
-# Fetch main page + all PDF links from it
-df = spark.read.format("http-page") \
-    .option("linkPattern", r"\.pdf$") \
-    .load("https://example.com/documents/")
-df.show()  # columns: url, timestamp, content (binary)
+df.show()  # columns: url, timestamp, headers (array)
 ```
 
 ## Contribute
