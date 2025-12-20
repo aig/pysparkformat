@@ -21,11 +21,11 @@ leveraging the new V2 data source PySpark API.
 
 Currently, the following formats are supported:
 
-| Format       | Read | Write | Description                                          |
-|--------------|------|-------|------------------------------------------------------|
-| `http-csv`   | Yes  | No    | Reads CSV files in parallel directly from a URL.     |
-| `http-json`  | Yes  | No    | Reads JSON Lines in parallel directly from a URL.    |
-| `http-links` | Yes  | No    | Parses HTML page, extracts links, fetches headers.   |
+| Format      | Read | Write | Description                                          |
+|-------------|------|-------|------------------------------------------------------|
+| `http-csv`  | Yes  | No    | Reads CSV files in parallel directly from a URL.     |
+| `http-json` | Yes  | No    | Reads JSON Lines in parallel directly from a URL.    |
+| `http-link` | Yes  | No    | Parses HTML page, extracts links, fetches headers.   |
 
 📖 **[Full Documentation](https://pysparkformat.readthedocs.io/en/latest/)** — detailed options, examples, and API reference.
 
@@ -75,7 +75,7 @@ df = spark.read.format("http-json").schema("name string, value int").load(url)
 df.show()
 ```
 
-### `http-links`
+### `http-link`
 
 ```python
 from pysparkformat.http.links import HTTPLinksDataSource
@@ -83,7 +83,7 @@ from pysparkformat.http.links import HTTPLinksDataSource
 spark.dataSource.register(HTTPLinksDataSource)
 
 # Parse page for all links and get headers via HEAD requests
-df = spark.read.format("http-links").load("https://example.com/")
+df = spark.read.format("http-link").load("https://example.com/")
 df.show()  # columns: url, timestamp, http_status, headers, error
 ```
 

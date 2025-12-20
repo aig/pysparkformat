@@ -85,9 +85,9 @@ class TestHTTP(unittest.TestCase):
         self.assertEqual(local_result.exceptAll(remote_result).count(), 0)
 
     def test_links_parses_page(self):
-        """Test that http-links parses all links and returns headers."""
+        """Test that http-link parses all links and returns headers."""
         base_url = "https://github.com/aig/pysparkformat"
-        result = self.spark.read.format("http-links").load(base_url).localCheckpoint()
+        result = self.spark.read.format("http-link").load(base_url).localCheckpoint()
 
         # Check schema
         self.assertEqual(len(result.schema.fields), 5)

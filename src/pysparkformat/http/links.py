@@ -85,7 +85,7 @@ class HTTPLinksDataSource(DataSource):
 
     @classmethod
     def name(cls):
-        return "http-links"
+        return "http-link"
 
     def schema(self):
         return StructType(
