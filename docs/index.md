@@ -20,11 +20,11 @@ leveraging the new V2 data source PySpark API.
 
 Currently, the following formats are supported:
 
-| Format      | Read | Write | Description                                          |
-|-------------|------|-------|------------------------------------------------------|
-| `http-csv`  | Yes  | No    | Reads CSV files in parallel directly from a URL.     |
-| `http-json` | Yes  | No    | Reads JSON Lines in parallel directly from a URL.    |
-| `http-page` | Yes  | No    | Fetches HTML page, extracts links, downloads content.|
+| Format       | Read | Write | Description                                          |
+|--------------|------|-------|------------------------------------------------------|
+| `http-csv`   | Yes  | No    | Reads CSV files in parallel directly from a URL.     |
+| `http-json`  | Yes  | No    | Reads JSON Lines in parallel directly from a URL.    |
+| `http-links` | Yes  | No    | Parses HTML page, extracts links, fetches headers.   |
 
 ## Installation
 
@@ -123,9 +123,9 @@ df = spark.read.format("http-json").schema(json_schema).load(url)
 df.show()
 ```
 
-## `http-page`
+## `http-links`
 
-The `http-page` format fetches an HTML page, parses all links (`<a href="...">` tags),
+The `http-links` format fetches an HTML page, parses all links (`<a href="...">` tags),
 and performs HEAD requests on each link to retrieve response headers. Each link becomes
 a separate Spark partition, enabling parallel header fetching across the cluster.
 
@@ -153,16 +153,16 @@ The output DataFrame has the following fixed schema:
 
 ```python
 from pyspark.sql import SparkSession
-from pysparkformat.http.page import HTTPPageDataSource
+from pysparkformat.http.links import HTTPLinksDataSource
 
 # Initialize SparkSession
-spark = SparkSession.builder.appName("http-page-example").getOrCreate()
+spark = SparkSession.builder.appName("http-links-example").getOrCreate()
 
 # Register the custom data source
-spark.dataSource.register(HTTPPageDataSource)
+spark.dataSource.register(HTTPLinksDataSource)
 
 # Parse page and get headers for all links
-df = spark.read.format("http-page").load("https://example.com/")
+df = spark.read.format("http-links").load("https://example.com/")
 
 # Display results
 df.show(truncate=False)
@@ -174,7 +174,7 @@ df.show(truncate=False)
 from pyspark.sql.functions import expr
 
 # Get headers and extract Content-Length
-df = spark.read.format("http-page").load("https://example.com/documents/")
+df = spark.read.format("http-links").load("https://example.com/documents/")
 
 # Filter headers to find Content-Length
 df.select(
@@ -187,7 +187,7 @@ df.select(
 
 ```python
 # Use custom timeout and user agent
-df = spark.read.format("http-page") \
+df = spark.read.format("http-links") \
     .option("timeout", 60) \
     .option("userAgent", "MyBot/1.0") \
     .load("https://example.com/")

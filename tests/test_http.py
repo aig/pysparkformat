@@ -7,7 +7,7 @@ from pyspark.sql import SparkSession
 
 from pysparkformat.http.csv import HTTPCSVDataSource
 from pysparkformat.http.json import HTTPJSONDataSource
-from pysparkformat.http.page import HTTPPageDataSource
+from pysparkformat.http.links import HTTPLinksDataSource
 
 
 class TestHTTP(unittest.TestCase):
@@ -31,7 +31,7 @@ class TestHTTP(unittest.TestCase):
         cls.spark = SparkSession.builder.appName("http-test-app").getOrCreate()
         cls.spark.dataSource.register(HTTPCSVDataSource)
         cls.spark.dataSource.register(HTTPJSONDataSource)
-        cls.spark.dataSource.register(HTTPPageDataSource)
+        cls.spark.dataSource.register(HTTPLinksDataSource)
 
         cls.data_path = Path(__file__).resolve().parent / "data"
 
@@ -84,10 +84,10 @@ class TestHTTP(unittest.TestCase):
         self.assertEqual(remote_result.exceptAll(local_result).count(), 0)
         self.assertEqual(local_result.exceptAll(remote_result).count(), 0)
 
-    def test_page_parses_links(self):
-        """Test that http-page parses all links and returns headers."""
+    def test_links_parses_page(self):
+        """Test that http-links parses all links and returns headers."""
         base_url = "https://github.com/aig/pysparkformat"
-        result = self.spark.read.format("http-page").load(base_url).localCheckpoint()
+        result = self.spark.read.format("http-links").load(base_url).localCheckpoint()
 
         # Check schema
         self.assertEqual(len(result.schema.fields), 5)

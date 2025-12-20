@@ -1,5 +1,5 @@
 """
-HTTP Page DataSource for PySpark
+HTTP Links DataSource for PySpark
 
 This module provides a PySpark DataSource that fetches an HTML page,
 parses all links from it, and performs HEAD requests on each link to get headers.
@@ -44,7 +44,7 @@ class LinkExtractor(HTMLParser):
 
 
 class Parameters:
-    """Parameters for HTTP Page DataSource."""
+    """Parameters for HTTP Links DataSource."""
 
     DEFAULT_TIMEOUT = 30
     DEFAULT_USER_AGENT = "pysparkformat/1.0"
@@ -65,7 +65,7 @@ class Parameters:
         )
 
 
-class HTTPPageDataSource(DataSource):
+class HTTPLinksDataSource(DataSource):
     """
     PySpark DataSource that parses an HTML page for links and fetches headers.
 
@@ -85,7 +85,7 @@ class HTTPPageDataSource(DataSource):
 
     @classmethod
     def name(cls):
-        return "http-page"
+        return "http-links"
 
     def schema(self):
         return StructType(
@@ -99,10 +99,10 @@ class HTTPPageDataSource(DataSource):
         )
 
     def reader(self, schema: StructType):
-        return HTTPPageDataSourceReader(schema, self.options)
+        return HTTPLinksDataSourceReader(schema, self.options)
 
 
-class HTTPPageDataSourceReader(DataSourceReader):
+class HTTPLinksDataSourceReader(DataSourceReader):
     """Reader that creates partitions for each link found in the HTML page."""
 
     def __init__(self, schema: StructType, options: dict):
