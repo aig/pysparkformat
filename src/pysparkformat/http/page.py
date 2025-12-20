@@ -1,5 +1,5 @@
 """
-HTTP Links DataSource for PySpark
+HTTP Page DataSource for PySpark
 
 This module provides a PySpark DataSource that fetches an HTML page,
 parses all links from it, and performs HEAD requests on each link to get headers.
@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse
 
+import dns.resolver
 import requests
 from pyspark.sql.datasource import DataSource, DataSourceReader, InputPartition
 from pyspark.sql.types import (
@@ -43,8 +44,75 @@ class LinkExtractor(HTMLParser):
                         self.links.append(absolute_url)
 
 
+def resolve_with_custom_dns(hostname: str, dns_server: str) -> str:
+    """Resolve hostname using a custom DNS server."""
+    resolver = dns.resolver.Resolver()
+    resolver.nameservers = [dns_server]
+    answers = resolver.resolve(hostname, "A")
+    return str(answers[0])
+
+
+def make_request_with_dns(
+    method: str,
+    url: str,
+    dns_server: str | None,
+    headers: dict,
+    timeout: int,
+    allow_redirects: bool,
+) -> requests.Response:
+    """Make HTTP request, optionally using custom DNS resolution."""
+    if dns_server:
+        parsed = urlparse(url)
+        hostname = parsed.hostname
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+
+        # Resolve using custom DNS
+        ip_address = resolve_with_custom_dns(hostname, dns_server)
+
+        # Replace hostname with IP in URL
+        new_netloc = f"{ip_address}:{parsed.port}" if parsed.port else ip_address
+
+        resolved_url = url.replace(parsed.netloc, new_netloc, 1)
+
+        # Add Host header to preserve original hostname
+        headers = headers.copy()
+        headers["Host"] = hostname if port in (80, 443) else f"{hostname}:{port}"
+
+        if method == "GET":
+            return requests.get(
+                resolved_url,
+                headers=headers,
+                timeout=timeout,
+                allow_redirects=allow_redirects,
+                verify=True,
+            )
+        else:
+            return requests.head(
+                resolved_url,
+                headers=headers,
+                timeout=timeout,
+                allow_redirects=allow_redirects,
+                verify=True,
+            )
+    else:
+        if method == "GET":
+            return requests.get(
+                url,
+                headers=headers,
+                timeout=timeout,
+                allow_redirects=allow_redirects,
+            )
+        else:
+            return requests.head(
+                url,
+                headers=headers,
+                timeout=timeout,
+                allow_redirects=allow_redirects,
+            )
+
+
 class Parameters:
-    """Parameters for HTTP Links DataSource."""
+    """Parameters for HTTP Page DataSource."""
 
     DEFAULT_TIMEOUT = 30
     DEFAULT_USER_AGENT = "pysparkformat/1.0"
@@ -63,6 +131,9 @@ class Parameters:
             str(options.get("followRedirects", self.DEFAULT_FOLLOW_REDIRECTS)).lower()
             == "true"
         )
+        self.dns_server = options.get("dnsServer")
+        if self.dns_server:
+            self.dns_server = str(self.dns_server)
 
 
 class HTTPPageDataSource(DataSource):
@@ -77,6 +148,7 @@ class HTTPPageDataSource(DataSource):
         - timeout: Request timeout in seconds (default: 30)
         - userAgent: User agent string for requests (default: pysparkformat/1.0)
         - followRedirects: Follow HTTP redirects (default: true)
+        - dnsServer: Custom DNS server for resolving hostnames (default: system DNS)
     """
 
     def __init__(self, options: dict):
@@ -117,11 +189,13 @@ class HTTPPageDataSourceReader(DataSourceReader):
         """
         headers = {"User-Agent": self.params.user_agent}
 
-        response = requests.get(
+        response = make_request_with_dns(
+            "GET",
             self.params.path,
-            headers=headers,
-            timeout=self.params.timeout,
-            allow_redirects=self.params.follow_redirects,
+            self.params.dns_server,
+            headers,
+            self.params.timeout,
+            self.params.follow_redirects,
         )
 
         if response.status_code != 200:
@@ -149,11 +223,13 @@ class HTTPPageDataSourceReader(DataSourceReader):
         page_request_error = None
 
         try:
-            response = requests.head(
+            response = make_request_with_dns(
+                "HEAD",
                 page_request_url,
-                headers=request_headers,
-                timeout=self.params.timeout,
-                allow_redirects=self.params.follow_redirects,
+                self.params.dns_server,
+                request_headers,
+                self.params.timeout,
+                self.params.follow_redirects,
             )
 
             page_response_http_status = response.status_code

@@ -149,6 +149,7 @@ The output DataFrame has the following fixed schema:
 | `timeout`         | Request timeout in seconds.                    | integer | `30`               |
 | `userAgent`       | User agent string for HTTP requests.           | string  | `pysparkformat/1.0`|
 | `followRedirects` | Follow HTTP redirects.                         | boolean | `true`             |
+| `dnsServer`       | Custom DNS server for resolving hostnames.     | string  | (system DNS)       |
 
 ### Example: Get Headers for All Links
 
