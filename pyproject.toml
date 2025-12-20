@@ -14,8 +14,7 @@ dependencies = [
     "pyarrow",
     "pandas",
     "grpcio",
-    "grpcio-status",
-    "dnspython"
+    "grpcio-status"
 ]
 
 [build-system]

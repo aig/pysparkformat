@@ -7,11 +7,12 @@ Each link becomes a partition, and the result contains url, timestamp,
 and response headers as an array.
 """
 
+import ipaddress
+import socket
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse
 
-import dns.resolver
 import requests
 from pyspark.sql.datasource import DataSource, DataSourceReader, InputPartition
 from pyspark.sql.types import (
@@ -22,6 +23,72 @@ from pyspark.sql.types import (
     StructType,
     TimestampType,
 )
+
+# Hostnames that are always blocked (case-insensitive)
+BLOCKED_HOSTNAMES = {
+    "localhost",
+    "localhost.localdomain",
+    "ip6-localhost",
+    "ip6-loopback",
+}
+
+
+def is_private_ip(hostname: str) -> bool:
+    """
+    Check if a hostname resolves to a private/internal IP address.
+
+    Returns True if the IP is private, loopback, link-local, or reserved.
+    """
+    try:
+        # Try to parse as IP address directly
+        ip = ipaddress.ip_address(hostname)
+        return (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+        )
+    except ValueError:
+        # Not an IP address, try to resolve hostname
+        try:
+            resolved_ip = socket.gethostbyname(hostname)
+            ip = ipaddress.ip_address(resolved_ip)
+            return (
+                ip.is_private
+                or ip.is_loopback
+                or ip.is_link_local
+                or ip.is_reserved
+                or ip.is_multicast
+            )
+        except (socket.gaierror, ValueError):
+            # Cannot resolve - treat as unsafe
+            return True
+
+
+def is_safe_url(url: str) -> bool:
+    """
+    Check if a URL is safe to request (not pointing to internal resources).
+
+    Blocks:
+    - localhost and similar hostnames
+    - Private IP ranges (10.x.x.x, 172.16-31.x.x, 192.168.x.x)
+    - Loopback addresses (127.x.x.x, ::1)
+    - Link-local addresses (169.254.x.x, fe80::)
+    - Reserved/multicast addresses
+    """
+    parsed = urlparse(url)
+    hostname = parsed.hostname
+
+    if not hostname:
+        return False
+
+    # Check blocked hostnames
+    if hostname.lower() in BLOCKED_HOSTNAMES:
+        return False
+
+    # Check if IP is private/internal
+    return not is_private_ip(hostname)
 
 
 class LinkExtractor(HTMLParser):
@@ -38,77 +105,12 @@ class LinkExtractor(HTMLParser):
                 if attr == "href" and value:
                     # Convert relative URLs to absolute
                     absolute_url = urljoin(self.base_url, value)
-                    # Only include http/https links
+                    # Only include http/https links that are safe
                     parsed = urlparse(absolute_url)
-                    if parsed.scheme in ("http", "https"):
+                    if parsed.scheme in ("http", "https") and is_safe_url(
+                        absolute_url
+                    ):
                         self.links.append(absolute_url)
-
-
-def resolve_with_custom_dns(hostname: str, dns_server: str) -> str:
-    """Resolve hostname using a custom DNS server."""
-    resolver = dns.resolver.Resolver()
-    resolver.nameservers = [dns_server]
-    answers = resolver.resolve(hostname, "A")
-    return str(answers[0])
-
-
-def make_request_with_dns(
-    method: str,
-    url: str,
-    dns_server: str | None,
-    headers: dict,
-    timeout: int,
-    allow_redirects: bool,
-) -> requests.Response:
-    """Make HTTP request, optionally using custom DNS resolution."""
-    if dns_server:
-        parsed = urlparse(url)
-        hostname = parsed.hostname
-        port = parsed.port or (443 if parsed.scheme == "https" else 80)
-
-        # Resolve using custom DNS
-        ip_address = resolve_with_custom_dns(hostname, dns_server)
-
-        # Replace hostname with IP in URL
-        new_netloc = f"{ip_address}:{parsed.port}" if parsed.port else ip_address
-
-        resolved_url = url.replace(parsed.netloc, new_netloc, 1)
-
-        # Add Host header to preserve original hostname
-        headers = headers.copy()
-        headers["Host"] = hostname if port in (80, 443) else f"{hostname}:{port}"
-
-        if method == "GET":
-            return requests.get(
-                resolved_url,
-                headers=headers,
-                timeout=timeout,
-                allow_redirects=allow_redirects,
-                verify=True,
-            )
-        else:
-            return requests.head(
-                resolved_url,
-                headers=headers,
-                timeout=timeout,
-                allow_redirects=allow_redirects,
-                verify=True,
-            )
-    else:
-        if method == "GET":
-            return requests.get(
-                url,
-                headers=headers,
-                timeout=timeout,
-                allow_redirects=allow_redirects,
-            )
-        else:
-            return requests.head(
-                url,
-                headers=headers,
-                timeout=timeout,
-                allow_redirects=allow_redirects,
-            )
 
 
 class Parameters:
@@ -131,9 +133,6 @@ class Parameters:
             str(options.get("followRedirects", self.DEFAULT_FOLLOW_REDIRECTS)).lower()
             == "true"
         )
-        self.dns_server = options.get("dnsServer")
-        if self.dns_server:
-            self.dns_server = str(self.dns_server)
 
 
 class HTTPPageDataSource(DataSource):
@@ -148,7 +147,6 @@ class HTTPPageDataSource(DataSource):
         - timeout: Request timeout in seconds (default: 30)
         - userAgent: User agent string for requests (default: pysparkformat/1.0)
         - followRedirects: Follow HTTP redirects (default: true)
-        - dnsServer: Custom DNS server for resolving hostnames (default: system DNS)
     """
 
     def __init__(self, options: dict):
@@ -189,13 +187,11 @@ class HTTPPageDataSourceReader(DataSourceReader):
         """
         headers = {"User-Agent": self.params.user_agent}
 
-        response = make_request_with_dns(
-            "GET",
+        response = requests.get(
             self.params.path,
-            self.params.dns_server,
-            headers,
-            self.params.timeout,
-            self.params.follow_redirects,
+            headers=headers,
+            timeout=self.params.timeout,
+            allow_redirects=self.params.follow_redirects,
         )
 
         if response.status_code != 200:
@@ -223,13 +219,11 @@ class HTTPPageDataSourceReader(DataSourceReader):
         page_request_error = None
 
         try:
-            response = make_request_with_dns(
-                "HEAD",
+            response = requests.head(
                 page_request_url,
-                self.params.dns_server,
-                request_headers,
-                self.params.timeout,
-                self.params.follow_redirects,
+                headers=request_headers,
+                timeout=self.params.timeout,
+                allow_redirects=self.params.follow_redirects,
             )
 
             page_response_http_status = response.status_code
