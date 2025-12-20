@@ -65,7 +65,7 @@ class Parameters:
         )
 
 
-class HTTPLinksDataSource(DataSource):
+class HTTPLinkDataSource(DataSource):
     """
     PySpark DataSource that parses an HTML page for links and fetches headers.
 
@@ -99,10 +99,10 @@ class HTTPLinksDataSource(DataSource):
         )
 
     def reader(self, schema: StructType):
-        return HTTPLinksDataSourceReader(schema, self.options)
+        return HTTPLinkDataSourceReader(schema, self.options)
 
 
-class HTTPLinksDataSourceReader(DataSourceReader):
+class HTTPLinkDataSourceReader(DataSourceReader):
     """Reader that creates partitions for each link found in the HTML page."""
 
     def __init__(self, schema: StructType, options: dict):

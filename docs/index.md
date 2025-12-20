@@ -153,13 +153,13 @@ The output DataFrame has the following fixed schema:
 
 ```python
 from pyspark.sql import SparkSession
-from pysparkformat.http.links import HTTPLinksDataSource
+from pysparkformat.http.link import HTTPLinkDataSource
 
 # Initialize SparkSession
-spark = SparkSession.builder.appName("http-links-example").getOrCreate()
+spark = SparkSession.builder.appName("http-link-example").getOrCreate()
 
 # Register the custom data source
-spark.dataSource.register(HTTPLinksDataSource)
+spark.dataSource.register(HTTPLinkDataSource)
 
 # Parse page and get headers for all links
 df = spark.read.format("http-link").load("https://example.com/")

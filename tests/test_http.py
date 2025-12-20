@@ -7,7 +7,7 @@ from pyspark.sql import SparkSession
 
 from pysparkformat.http.csv import HTTPCSVDataSource
 from pysparkformat.http.json import HTTPJSONDataSource
-from pysparkformat.http.links import HTTPLinksDataSource
+from pysparkformat.http.link import HTTPLinkDataSource
 
 
 class TestHTTP(unittest.TestCase):
@@ -31,7 +31,7 @@ class TestHTTP(unittest.TestCase):
         cls.spark = SparkSession.builder.appName("http-test-app").getOrCreate()
         cls.spark.dataSource.register(HTTPCSVDataSource)
         cls.spark.dataSource.register(HTTPJSONDataSource)
-        cls.spark.dataSource.register(HTTPLinksDataSource)
+        cls.spark.dataSource.register(HTTPLinkDataSource)
 
         cls.data_path = Path(__file__).resolve().parent / "data"
 

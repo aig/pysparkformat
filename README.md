@@ -78,9 +78,9 @@ df.show()
 ### `http-link`
 
 ```python
-from pysparkformat.http.links import HTTPLinksDataSource
+from pysparkformat.http.link import HTTPLinkDataSource
 
-spark.dataSource.register(HTTPLinksDataSource)
+spark.dataSource.register(HTTPLinkDataSource)
 
 # Parse page for all links and get headers via HEAD requests
 df = spark.read.format("http-link").load("https://example.com/")
