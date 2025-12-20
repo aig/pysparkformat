@@ -65,7 +65,7 @@ class Parameters:
         )
 
 
-class HTTPLinkDataSource(DataSource):
+class HTTPPageDataSource(DataSource):
     """
     PySpark DataSource that parses an HTML page for links and fetches headers.
 
@@ -85,24 +85,25 @@ class HTTPLinkDataSource(DataSource):
 
     @classmethod
     def name(cls):
-        return "http-link"
+        return "http-page"
 
     def schema(self):
         return StructType(
             [
-                StructField("url", StringType(), False),
-                StructField("timestamp", TimestampType(), False),
-                StructField("http_status", IntegerType(), True),
-                StructField("headers", ArrayType(StringType()), True),
-                StructField("error", StringType(), True),
+                StructField("page_request_url", StringType(), False),
+                StructField("page_request_datetime", TimestampType(), False),
+                StructField("page_request_error", StringType(), True),
+                StructField("page_response_http_status", IntegerType(), True),
+                StructField("page_response_headers", ArrayType(StringType()), True),
+                StructField("page_backlink_url", StringType(), False),
             ]
         )
 
     def reader(self, schema: StructType):
-        return HTTPLinkDataSourceReader(schema, self.options)
+        return HTTPPageDataSourceReader(schema, self.options)
 
 
-class HTTPLinkDataSourceReader(DataSourceReader):
+class HTTPPageDataSourceReader(DataSourceReader):
     """Reader that creates partitions for each link found in the HTML page."""
 
     def __init__(self, schema: StructType, options: dict):
@@ -133,36 +134,44 @@ class HTTPLinkDataSourceReader(DataSourceReader):
         # Get unique links
         links = list(dict.fromkeys(parser.links))
 
-        # Create a partition for each link
-        return [InputPartition(link) for link in links]
+        # Create a partition for each link (tuple of request_url, backlink_url)
+        page_backlink_url = self.params.path
+        return [InputPartition((link, page_backlink_url)) for link in links]
 
     def read(self, partition: InputPartition):
         """
-        Perform HEAD request on the URL and yield url, timestamp, status, headers.
+        Perform HEAD request on the URL and yield request/response fields.
         """
-        url = partition.value
+        page_request_url, page_backlink_url = partition.value
         request_headers = {"User-Agent": self.params.user_agent}
 
-        timestamp = datetime.now(timezone.utc)
-        error = None
+        page_request_datetime = datetime.now(timezone.utc)
+        page_request_error = None
 
         try:
             response = requests.head(
-                url,
+                page_request_url,
                 headers=request_headers,
                 timeout=self.params.timeout,
                 allow_redirects=self.params.follow_redirects,
             )
 
-            http_status = response.status_code
+            page_response_http_status = response.status_code
             # Convert headers to array of "key: value" strings
-            response_headers = [
+            page_response_headers = [
                 f"{key}: {value}" for key, value in response.headers.items()
             ]
 
         except requests.RequestException as e:
-            http_status = None
-            response_headers = None
-            error = str(e)
+            page_response_http_status = None
+            page_response_headers = None
+            page_request_error = str(e)
 
-        yield (url, timestamp, http_status, response_headers, error)
+        yield (
+            page_request_url,
+            page_request_datetime,
+            page_request_error,
+            page_response_http_status,
+            page_response_headers,
+            page_backlink_url,
+        )

@@ -24,7 +24,7 @@ Currently, the following formats are supported:
 |-------------|------|-------|------------------------------------------------------|
 | `http-csv`  | Yes  | No    | Reads CSV files in parallel directly from a URL.     |
 | `http-json` | Yes  | No    | Reads JSON Lines in parallel directly from a URL.    |
-| `http-link` | Yes  | No    | Parses HTML page, extracts links, fetches headers.   |
+| `http-page` | Yes  | No    | Parses HTML page, extracts links, fetches headers.   |
 
 ## Installation
 
@@ -123,9 +123,9 @@ df = spark.read.format("http-json").schema(json_schema).load(url)
 df.show()
 ```
 
-## `http-link`
+## `http-page`
 
-The `http-link` format fetches an HTML page, parses all links (`<a href="...">` tags),
+The `http-page` format fetches an HTML page, parses all links (`<a href="...">` tags),
 and performs HEAD requests on each link to retrieve response headers. Each link becomes
 a separate Spark partition, enabling parallel header fetching across the cluster.
 
@@ -133,13 +133,14 @@ a separate Spark partition, enabling parallel header fetching across the cluster
 
 The output DataFrame has the following fixed schema:
 
-| Column        | Type              | Nullable | Description                              |
-|---------------|-------------------|----------|------------------------------------------|
-| `url`         | StringType        | No       | The URL of the link                      |
-| `timestamp`   | TimestampType     | No       | When the HEAD request was made (UTC)     |
-| `http_status` | IntegerType       | Yes      | HTTP response status code                |
-| `headers`     | ArrayType(String) | Yes      | Response headers as "key: value" strings |
-| `error`       | StringType        | Yes      | Error message if request failed          |
+| Column                      | Type              | Nullable | Description                              |
+|-----------------------------|-------------------|----------|------------------------------------------|
+| `page_request_url`          | StringType        | No       | The URL being checked (HEAD request)     |
+| `page_request_datetime`     | TimestampType     | No       | When the request was made (UTC)          |
+| `page_request_error`        | StringType        | Yes      | Error message if request failed          |
+| `page_response_http_status` | IntegerType       | Yes      | HTTP response status code                |
+| `page_response_headers`     | ArrayType(String) | Yes      | Response headers as "key: value" strings |
+| `page_backlink_url`         | StringType        | No       | The page where this link was found       |
 
 ### Options
 
@@ -153,16 +154,16 @@ The output DataFrame has the following fixed schema:
 
 ```python
 from pyspark.sql import SparkSession
-from pysparkformat.http.link import HTTPLinkDataSource
+from pysparkformat.http.page import HTTPPageDataSource
 
 # Initialize SparkSession
-spark = SparkSession.builder.appName("http-link-example").getOrCreate()
+spark = SparkSession.builder.appName("http-page-example").getOrCreate()
 
 # Register the custom data source
-spark.dataSource.register(HTTPLinkDataSource)
+spark.dataSource.register(HTTPPageDataSource)
 
 # Parse page and get headers for all links
-df = spark.read.format("http-link").load("https://example.com/")
+df = spark.read.format("http-page").load("https://example.com/")
 
 # Display results
 df.show(truncate=False)
@@ -174,12 +175,12 @@ df.show(truncate=False)
 from pyspark.sql.functions import expr
 
 # Get headers and extract Content-Length
-df = spark.read.format("http-link").load("https://example.com/documents/")
+df = spark.read.format("http-page").load("https://example.com/documents/")
 
 # Filter headers to find Content-Length
 df.select(
-    "url",
-    expr("filter(headers, h -> h like 'Content-Length%')").alias("content_length")
+    "page_request_url",
+    expr("filter(page_response_headers, h -> h like 'Content-Length%')").alias("content_length")
 ).show(truncate=False)
 ```
 
@@ -187,7 +188,7 @@ df.select(
 
 ```python
 # Use custom timeout and user agent
-df = spark.read.format("http-link") \
+df = spark.read.format("http-page") \
     .option("timeout", 60) \
     .option("userAgent", "MyBot/1.0") \
     .load("https://example.com/")

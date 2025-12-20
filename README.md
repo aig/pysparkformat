@@ -25,7 +25,7 @@ Currently, the following formats are supported:
 |-------------|------|-------|------------------------------------------------------|
 | `http-csv`  | Yes  | No    | Reads CSV files in parallel directly from a URL.     |
 | `http-json` | Yes  | No    | Reads JSON Lines in parallel directly from a URL.    |
-| `http-link` | Yes  | No    | Parses HTML page, extracts links, fetches headers.   |
+| `http-page` | Yes  | No    | Parses HTML page, extracts links, fetches headers.   |
 
 📖 **[Full Documentation](https://pysparkformat.readthedocs.io/en/latest/)** — detailed options, examples, and API reference.
 
@@ -75,16 +75,16 @@ df = spark.read.format("http-json").schema("name string, value int").load(url)
 df.show()
 ```
 
-### `http-link`
+### `http-page`
 
 ```python
-from pysparkformat.http.link import HTTPLinkDataSource
+from pysparkformat.http.page import HTTPPageDataSource
 
-spark.dataSource.register(HTTPLinkDataSource)
+spark.dataSource.register(HTTPPageDataSource)
 
 # Parse page for all links and get headers via HEAD requests
-df = spark.read.format("http-link").load("https://example.com/")
-df.show()  # columns: url, timestamp, http_status, headers, error
+df = spark.read.format("http-page").load("https://example.com/")
+df.show()  # columns: page_request_url, page_request_datetime, page_request_error, page_response_http_status, page_response_headers, page_backlink_url
 ```
 
 ## Contribute
