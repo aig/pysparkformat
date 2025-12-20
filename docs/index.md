@@ -20,10 +20,11 @@ leveraging the new V2 data source PySpark API.
 
 Currently, the following formats are supported:
 
-| Format      | Read | Write | Description                                       |
-|-------------|------|-------|---------------------------------------------------|
-| `http-csv`  | Yes  | No    | Reads CSV files in parallel directly from a URL.  |
-| `http-json` | Yes  | No    | Reads JSON Lines in parallel directly from a URL. |
+| Format      | Read | Write | Description                                          |
+|-------------|------|-------|------------------------------------------------------|
+| `http-csv`  | Yes  | No    | Reads CSV files in parallel directly from a URL.     |
+| `http-json` | Yes  | No    | Reads JSON Lines in parallel directly from a URL.    |
+| `http-page` | Yes  | No    | Fetches HTML page, extracts links, downloads content.|
 
 ## Installation
 
@@ -45,7 +46,9 @@ This has been tested with Databricks Runtime 15.4 LTS and later.
 
 ## `http-csv`
 
-The following options can be specified when using the `http-csv` format:
+The `http-csv` format reads CSV files in parallel directly from a URL using HTTP range requests.
+
+### Options
 
 | Name            | Description                                           | Type    | Default   |
 |-----------------|-------------------------------------------------------|---------|-----------|
@@ -85,7 +88,9 @@ df.show()
 
 ## `http-json`
 
-The following options can be specified when using the `http-json` format:
+The `http-json` format reads JSON Lines files in parallel directly from a URL using HTTP range requests.
+
+### Options
 
 | Name            | Description                                 | Type    | Default   |
 |-----------------|---------------------------------------------|---------|-----------|
@@ -117,3 +122,89 @@ df = spark.read.format("http-json").schema(json_schema).load(url)
 # Display the DataFrame (use `display(df)` in Databricks)
 df.show()
 ```
+
+## `http-page`
+
+The `http-page` format fetches an HTML page. By default, it only fetches the main page.
+If a `linkPattern` is specified, it also parses the HTML to extract matching links
+(`<a href="...">` tags) and fetches their content. Each URL becomes a separate Spark partition,
+enabling parallel downloads across the cluster.
+
+### Schema
+
+The output DataFrame has the following fixed schema:
+
+| Column      | Type          | Nullable | Description                           |
+|-------------|---------------|----------|---------------------------------------|
+| `url`       | StringType    | No       | The URL of the fetched resource       |
+| `timestamp` | TimestampType | No       | When the content was fetched (UTC)    |
+| `content`   | BinaryType    | Yes      | Binary content of the fetched resource|
+
+### Options
+
+| Name              | Description                                           | Type    | Default            |
+|-------------------|-------------------------------------------------------|---------|--------------------| 
+| `timeout`         | Request timeout in seconds.                           | integer | `30`               |
+| `userAgent`       | User agent string for HTTP requests.                  | string  | `pysparkformat/1.0`|
+| `followRedirects` | Follow HTTP redirects.                                | boolean | `true`             |
+| `linkPattern`     | Regex pattern to match links to also fetch (optional).| string  | (none)             |
+
+### Example: Fetch Main Page Only
+
+```python
+from pyspark.sql import SparkSession
+from pysparkformat.http.page import HTTPPageDataSource
+
+# Initialize SparkSession
+spark = SparkSession.builder.appName("http-page-example").getOrCreate()
+
+# Register the custom data source
+spark.dataSource.register(HTTPPageDataSource)
+
+# Fetch only the main page
+df = spark.read.format("http-page").load("https://example.com/")
+
+# Display results (1 row with the main page content)
+df.show()
+```
+
+### Example: Fetch Main Page Plus Matching Links
+
+```python
+# Fetch main page and all PDF files linked from it
+df = spark.read.format("http-page") \
+    .option("linkPattern", r"\.pdf$") \
+    .load("https://example.com/documents/")
+
+df.show()
+```
+
+### Example: Fetch Main Page Plus All Links
+
+```python
+# Fetch main page and all http/https links (use .* to match everything)
+df = spark.read.format("http-page") \
+    .option("linkPattern", r".*") \
+    .load("https://example.com/")
+
+df.show()
+```
+
+### Example: Custom Timeout and User Agent
+
+```python
+# Use custom timeout and user agent
+df = spark.read.format("http-page") \
+    .option("timeout", 60) \
+    .option("userAgent", "MyBot/1.0") \
+    .load("https://example.com/")
+
+df.show()
+```
+
+### Use Cases
+
+- **Single page fetch**: Download a single web page as binary content
+- **Document collection**: Fetch main page plus all PDF, CSV, or other files linked from it
+- **Data pipeline ingestion**: Automatically discover and download new files from a web directory
+- **Content archival**: Save binary content of the main page and selected linked resources
