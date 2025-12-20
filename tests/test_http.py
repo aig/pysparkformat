@@ -8,6 +8,7 @@ from pyspark.sql import SparkSession
 from pysparkformat.http.csv import HTTPCSVDataSource
 from pysparkformat.http.json import HTTPJSONDataSource
 
+
 class TestHTTP(unittest.TestCase):
     TEST_DATA_URL = (
         "https://raw.githubusercontent.com/aig/pysparkformat/"
